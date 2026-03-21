@@ -4,7 +4,8 @@
       "Bash(npm run:*)",
       "Bash(node --input-type=module --eval \"import ''''./node_modules/vite/bin/vite.js''''\")",
       "Bash(npx --no vite build)",
-      "Bash(node node_modules/vite/bin/vite.js build)"
+      "Bash(node node_modules/vite/bin/vite.js build)",
+      "Bash(find /Users/rikmikac/Github/ForestBath -maxdepth 2 -name *.png -o -name *.jpg -o -name *.jpeg -o -name *.webp)"
     ]
   }
 }

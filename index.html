@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ForestBath</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --accent:      #3a6642;
+      --accent-light:#4e8a5a;
+      --bg:          #f2ede4;
+      --surface:     #faf7f0;
+      --surface2:    #ece7dc;
+      --border:      rgba(58,80,50,0.13);
+      --border-mid:  rgba(58,80,50,0.25);
+      --text:        #1f2a1e;
+      --muted:       #4f5e4c;
+      --hint:        #7e8c79;
+      --radius:      14px;
+      --font-display:'Lora', Georgia, serif;
+      --font-body:   'DM Sans', sans-serif;
+      --font-mono:   'DM Mono', monospace;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --accent:      #6aab76;
+        --accent-light:#85c491;
+        --bg:          #141a13;
+        --surface:     #1c251b;
+        --surface2:    #242e23;
+        --border:      rgba(106,171,118,0.12);
+        --border-mid:  rgba(106,171,118,0.24);
+        --text:        #dfe8da;
+        --muted:       #9aad93;
+        --hint:        #637060;
+      }
+    }
+
+    html, body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    .page {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem 5rem;
+    }
+
+    /* ── Hero header ── */
+    .hero-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 2rem;
+    }
+
+    .portal-title {
+      font-family: var(--font-display);
+      font-size: 44px;
+      font-weight: 600;
+      line-height: 1.1;
+      color: var(--text);
+      letter-spacing: -0.5px;
+    }
+
+    .portal-title em {
+      font-style: italic;
+      color: var(--accent);
+    }
+
+    .portal-sub {
+      font-size: 14px;
+      color: var(--hint);
+      margin-top: 7px;
+    }
+
+    /* ── Toggle ── */
+    .toggle-wrap {
+      display: flex;
+      align-items: center;
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: 8px;
+      padding: 4px;
+      gap: 4px;
+      align-self: flex-start;
+      margin-top: 8px;
+    }
+
+    .toggle-btn {
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 500;
+      padding: 5px 14px;
+      border-radius: 6px;
+      border: 0.5px solid transparent;
+      cursor: pointer;
+      background: transparent;
+      color: var(--muted);
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+
+    .toggle-btn.active {
+      background: var(--surface2);
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    /* ── Divider ── */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 2rem;
+    }
+
+    .divider-line { flex: 1; height: 0.5px; background: var(--border); }
+
+    .divider-ornament {
+      font-size: 12px;
+      color: var(--hint);
+      opacity: 0.5;
+      letter-spacing: 5px;
+    }
+
+    /* ── Grid ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(272px, 1fr));
+      gap: 18px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: border-color 0.18s, transform 0.14s, box-shadow 0.18s;
+    }
+
+    .card:hover {
+      border-color: var(--border-mid);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 28px rgba(20,40,20,0.11);
+    }
+
+    .card-thumb {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: var(--surface2);
+      border-bottom: 0.5px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 44px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card-thumb img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .card-thumb-tag {
+      position: absolute;
+      bottom: 8px;
+      right: 10px;
+      z-index: 1;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      font-weight: 500;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--hint);
+      background: var(--surface);
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 0.5px solid var(--border);
+    }
+
+    .card-body {
+      padding: 15px 17px 17px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .card-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.3;
+    }
+
+    .card-desc {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.65;
+      flex: 1;
+    }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 12px;
+      padding-top: 11px;
+      border-top: 0.5px solid var(--border);
+    }
+
+    .tag {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: var(--surface2);
+      color: var(--hint);
+    }
+
+    .play-btn {
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 500;
+      padding: 6px 18px;
+      border-radius: 20px;
+      border: 0.5px solid var(--accent);
+      background: transparent;
+      color: var(--accent);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .play-btn:hover {
+      background: var(--accent);
+      color: var(--surface);
+    }
+
+    /* ── Empty slot ── */
+    .empty-slot {
+      background: var(--surface);
+      border: 0.5px dashed var(--border-mid);
+      border-radius: var(--radius);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-height: 210px;
+      opacity: 0.5;
+    }
+
+    .empty-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px dashed var(--border-mid);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: var(--hint);
+    }
+
+    .empty-label {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      letter-spacing: 0.07em;
+      color: var(--hint);
+    }
+
+    /* ── Footer ── */
+    .footer-bar {
+      margin-top: 2.5rem;
+      padding-top: 1.25rem;
+      border-top: 0.5px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .footer-count {
+      font-size: 12px;
+      color: var(--hint);
+      font-family: var(--font-mono);
+    }
+
+    .footer-hint { font-size: 12px; color: var(--hint); }
+
+    .footer-hint code {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      background: var(--surface2);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 0.5px solid var(--border);
+      color: var(--accent);
+    }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 16, 8, 0.75);
+      z-index: 999;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 0.5px solid var(--border-mid);
+      border-radius: 16px;
+      width: min(880px, 100%);
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 18px;
+      border-bottom: 0.5px solid var(--border);
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .modal-actions { display: flex; gap: 8px; align-items: center; }
+
+    .modal-newtab {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--muted);
+      text-decoration: none;
+      padding: 4px 10px;
+      border: 0.5px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface2);
+      transition: color 0.12s;
+    }
+
+    .modal-newtab:hover { color: var(--text); }
+
+    .modal-close {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: 0.5px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 17px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.12s;
+      flex-shrink: 0;
+    }
+
+    .modal-close:hover { color: var(--text); }
+
+    .modal-body {
+      flex: 1;
+      overflow: hidden;
+      background: #000;
+      min-height: 480px;
+    }
+
+    .modal-body iframe {
+      width: 100%;
+      height: 100%;
+      min-height: 480px;
+      border: none;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="hero-top">
+    <div>
+      <div class="portal-title">🌿 <em>Forest</em>Bath</div>
+      <div class="portal-sub">a small clearing where our games live</div>
+    </div>
+    <div class="toggle-wrap">
+      <button class="toggle-btn active" id="btn-modal" onclick="setMode('modal')">Lightbox</button>
+      <button class="toggle-btn" id="btn-tab" onclick="setMode('tab')">New tab</button>
+    </div>
+  </div>
+
+  <div class="divider">
+    <div class="divider-line"></div>
+    <div class="divider-ornament">✦ ✦ ✦</div>
+    <div class="divider-line"></div>
+  </div>
+
+  <div class="grid" id="game-grid"></div>
+
+  <div class="footer-bar">
+    <div class="footer-count" id="count-label"></div>
+    <div class="footer-hint">add entries to the <code>GAMES</code> array to list a game</div>
+  </div>
+
+</div>
+
+<!-- Modal lightbox -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">—</div>
+      <div class="modal-actions">
+        <a class="modal-newtab" id="modal-newtab-link" href="#" target="_blank">open in new tab ↗</a>
+        <button class="modal-close" id="modal-close-btn">×</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <iframe id="modal-frame" src="" allowfullscreen></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ─────────────────────────────────────────────
+  //  GAMES LIST
+  //  Add one object per game. Fields:
+  //    title    (string)  — display name
+  //    desc     (string)  — short description shown on the card
+  //    tag      (string)  — genre label, e.g. "arcade", "puzzle", "rpg"
+  //    emoji    (string)  — fallback thumbnail icon if no screenshot
+  //    src      (string)  — path to the game's index.html, relative to this file
+  //    thumb    (string, optional) — path to a screenshot/thumbnail image
+  //
+  //  Example:
+  //  {
+  //    title: "Asteroid Dash",
+  //    desc:  "Dodge rocks, collect fuel, survive as long as you can.",
+  //    tag:   "arcade",
+  //    emoji: "🚀",
+  //    src:   "asteroid-dash/index.html",
+  //    thumb: "asteroid-dash/thumb.png"   // optional
+  //  },
+  // ─────────────────────────────────────────────
+  const GAMES = [
+    {
+      title: "Asteroid Dash",
+      desc:  "Dodge rocks, collect fuel, survive as long as you can.",
+      tag:   "arcade",
+      emoji: "🚀",
+      src:   "asteroid-dash/index.html"
+    },
+    {
+      title: "Pixel Dungeon",
+      desc:  "Turn-based roguelike with procedurally generated floors.",
+      tag:   "rpg",
+      emoji: "⚔️",
+      src:   "pixel-dungeon/index.html"
+    },
+    {
+      title: "Gravity Flip",
+      desc:  "Flip gravity to navigate impossible geometry.",
+      tag:   "platformer",
+      emoji: "🌀",
+      src:   "gravity-flip/index.html"
+    }
+  ];
+
+  let openMode = 'modal';
+
+  function setMode(mode) {
+    openMode = mode;
+    document.getElementById('btn-modal').classList.toggle('active', mode === 'modal');
+    document.getElementById('btn-tab').classList.toggle('active', mode === 'tab');
+  }
+
+  function launch(game) {
+    if (openMode === 'tab') {
+      window.open(game.src, '_blank');
+      return;
+    }
+    document.getElementById('modal-title').textContent = game.title;
+    document.getElementById('modal-frame').src = game.src;
+    document.getElementById('modal-newtab-link').href = game.src;
+    document.getElementById('modal-overlay').classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('modal-overlay').classList.remove('open');
+    document.getElementById('modal-frame').src = '';
+  }
+
+  document.getElementById('modal-close-btn').addEventListener('click', closeModal);
+  document.getElementById('modal-overlay').addEventListener('click', function (e) {
+    if (e.target === this) closeModal();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeModal();
+  });
+
+  function render() {
+    const grid = document.getElementById('game-grid');
+    grid.innerHTML = '';
+
+    GAMES.forEach(function (g) {
+      const card = document.createElement('div');
+      card.className = 'card';
+
+      const thumbContent = g.thumb
+        ? `<img src="${g.thumb}" alt="${g.title} screenshot" />`
+        : `<span style="position:relative;z-index:1">${g.emoji}</span>`;
+
+      card.innerHTML = `
+        <div class="card-thumb">
+          ${thumbContent}
+          <span class="card-thumb-tag">${g.tag}</span>
+        </div>
+        <div class="card-body">
+          <div class="card-title">${g.title}</div>
+          <div class="card-desc">${g.desc}</div>
+          <div class="card-footer">
+            <span class="tag">${g.tag}</span>
+            <button class="play-btn">Play</button>
+          </div>
+        </div>
+      `;
+
+      card.querySelector('.play-btn').addEventListener('click', function () { launch(g); });
+      grid.appendChild(card);
+    });
+
+    const cols = Math.floor(grid.offsetWidth / 272) || 3;
+    const remainder = GAMES.length % cols;
+    const slots = remainder === 0 ? 0 : cols - remainder;
+    for (let i = 0; i < slots; i++) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-slot';
+      empty.innerHTML = `
+        <div class="empty-icon">+</div>
+        <div class="empty-label">next game</div>
+      `;
+      grid.appendChild(empty);
+    }
+
+    const n = GAMES.length;
+    document.getElementById('count-label').textContent =
+      n + ' game' + (n !== 1 ? 's' : '') + ' in the clearing';
+  }
+
+  render();
+</script>
+
+</body>
+</html>

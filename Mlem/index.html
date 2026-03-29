@@ -449,9 +449,9 @@
     { buttons: [3, 5] },                          // layer 2 — L/R flanks
     { buttons: [1, 4, 7] },                       // layer 3 — vertical strip
     { buttons: [0, 2, 6, 8] },                    // layer 4 — four corners
-    { buttons: [0, 1, 2, 3, 4, 5, 6, 7, 8] },    // layer 5 — all (numbered)
-    { buttons: [0, 1, 2, 3, 4, 5, 6, 7, 8], shapeMode: 'groups'  }, // layer 6 — 3 shape groups
-    { buttons: [0, 1, 2, 3, 4, 5, 6, 7, 8], shapeMode: 'unique'  }, // layer 7 — 9 unique shapes
+    { buttons: [0, 1, 2, 3, 5, 6, 7, 8] },         // layer 5 — outer ring (numbered)
+    { buttons: [0, 1, 2, 3, 5, 6, 7, 8], shapeMode: 'groups'  }, // layer 6 — 3 shape groups
+    { buttons: [0, 1, 2, 3, 5, 6, 7, 8], shapeMode: 'unique'  }, // layer 7 — 8 unique shapes
   ];
 
   // ── Shape SVG definitions (24×24 viewBox) ────────
@@ -469,9 +469,9 @@
 
   const GROUP_SHAPES  = ['square', 'circle', 'triangle',
                          'square', 'circle', 'triangle',
-                         'square', 'circle', 'triangle'];
+                         'square', 'circle'];
   const UNIQUE_SHAPES = ['square', 'circle', 'triangle', 'diamond',
-                         'pentagon', 'hexagon', 'star', 'cross', 'heart'];
+                         'pentagon', 'hexagon', 'star', 'cross'];
 
   const ERROR_FLASH_MS = 150;
   const STAGE_CLEAR_MS = 900;

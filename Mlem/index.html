@@ -36,6 +36,20 @@
       overflow: hidden;
     }
 
+    /* ── Version stamp ── */
+    .version-stamp {
+      position: fixed;
+      bottom: 8px;
+      right: 10px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      opacity: 0.45;
+      pointer-events: none;
+      z-index: 10000;
+    }
+
     /* ── Scanline overlay ── */
     body::after {
       content: '';
@@ -410,6 +424,8 @@
   </style>
 </head>
 <body>
+
+<div class="version-stamp">v1.0 · 2026-03-29</div>
 
 <div class="device" id="device">
   <div class="screw-bl"></div>

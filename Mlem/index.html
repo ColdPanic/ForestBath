@@ -447,7 +447,7 @@
 <script>
   const SEQUENCE_LENGTH = 9;
   const BUTTONS         = 9;
-  const ERROR_FLASH_MS  = 650;  // ms buttons stay red on wrong press
+  const ERROR_FLASH_MS  = 150;  // ms buttons stay red on wrong press
 
   let sequence  = [];
   let playerPos = 0;
@@ -500,13 +500,13 @@
   function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
   // ── Generate sequence ────────────────────────────
+  // Use a full shuffle so each button appears exactly once —
+  // prevents a correct step from landing on an already-confirmed button.
   function generateSequence() {
-    sequence = [];
-    for (let i = 0; i < SEQUENCE_LENGTH; i++) {
-      let next;
-      do { next = Math.floor(Math.random() * BUTTONS); }
-      while (sequence.length > 0 && next === sequence[sequence.length - 1]);
-      sequence.push(next);
+    sequence = Array.from({ length: BUTTONS }, (_, i) => i);
+    for (let i = sequence.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [sequence[i], sequence[j]] = [sequence[j], sequence[i]];
     }
   }
 
@@ -516,8 +516,9 @@
     phase = 'animating';
 
     if (idx === sequence[playerPos]) {
-      // Correct — light up green, stay green
+      // Correct — light up green, lock out (each button appears only once)
       btns[idx].classList.add('success');
+      btns[idx].disabled = true;
       playerPos++;
       updateProgress();
 
@@ -536,7 +537,7 @@
         b.classList.add('error');
       });
       await sleep(ERROR_FLASH_MS);
-      btns.forEach(b => b.classList.remove('error'));
+      btns.forEach(b => { b.classList.remove('error'); b.disabled = false; });
       playerPos = 0;
       updateProgress();
       setDisplay('find the code', `step 1 of ${SEQUENCE_LENGTH}`);

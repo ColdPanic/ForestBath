@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mlem — portable safe</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #080a09;
+      --device:    #111410;
+      --panel:     #161a15;
+      --border:    #2a3028;
+      --amber:     #d97b00;
+      --amber-glow:#ff9a1a;
+      --amber-dim: #3d2200;
+      --red:       #c0392b;
+      --red-glow:  #ff4444;
+      --green:     #1e7a3c;
+      --green-glow:#2ecc71;
+      --text:      #b8c4b2;
+      --text-dim:  #4a5548;
+      --text-bright:#e8f0e4;
+      --screw:     #1e2420;
+      --font-mono: 'Courier New', Courier, monospace;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      overflow: hidden;
+    }
+
+    /* ── Scanline overlay ── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.08) 2px,
+        rgba(0,0,0,0.08) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ── Device shell ── */
+    .device {
+      width: min(380px, 96vw);
+      background: var(--device);
+      border: 1.5px solid var(--border);
+      border-radius: 18px;
+      padding: 24px 20px 28px;
+      box-shadow:
+        0 0 0 1px #0e110d,
+        0 20px 60px rgba(0,0,0,0.8),
+        inset 0 1px 0 rgba(255,255,255,0.04);
+      position: relative;
+      user-select: none;
+    }
+
+    /* corner screws */
+    .device::before, .device::after,
+    .device .screw-bl, .device .screw-br {
+      content: '';
+      position: absolute;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--screw);
+      border: 1px solid #0d100c;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+    .device::before  { top: 10px; left: 10px; }
+    .device::after   { top: 10px; right: 10px; }
+    .device .screw-bl { bottom: 10px; left: 10px; }
+    .device .screw-br { bottom: 10px; right: 10px; }
+
+    /* ── Header label ── */
+    .device-label {
+      text-align: center;
+      font-size: 9px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 16px;
+    }
+
+    /* ── Display screen ── */
+    .display {
+      background: #060806;
+      border: 1px solid #1e2820;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 18px;
+      min-height: 64px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      position: relative;
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.6);
+    }
+
+    .display::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 8px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.025) 0%, transparent 40%);
+      pointer-events: none;
+    }
+
+    .display-status {
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      transition: color 0.2s;
+    }
+
+    .display-main {
+      font-size: 15px;
+      letter-spacing: 0.1em;
+      color: var(--amber);
+      text-shadow: 0 0 8px var(--amber);
+      text-transform: uppercase;
+      transition: color 0.2s, text-shadow 0.2s;
+    }
+
+    .display-main.red  { color: var(--red-glow);   text-shadow: 0 0 10px var(--red); }
+    .display-main.green{ color: var(--green-glow);  text-shadow: 0 0 10px var(--green); }
+
+    /* ── Progress dots ── */
+    .progress-bar {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 16px;
+      justify-content: center;
+    }
+
+    .progress-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--border);
+      transition: background 0.25s, box-shadow 0.25s;
+    }
+
+    .progress-dot.done {
+      background: var(--amber);
+      box-shadow: 0 0 5px var(--amber);
+    }
+
+    .progress-dot.current {
+      background: var(--amber-glow);
+      box-shadow: 0 0 8px var(--amber-glow);
+      animation: pulse-dot 1s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { box-shadow: 0 0 5px var(--amber-glow); }
+      50%       { box-shadow: 0 0 12px var(--amber-glow); }
+    }
+
+    /* ── Button grid ── */
+    .btn-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .safe-btn {
+      aspect-ratio: 1;
+      background: var(--panel);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      position: relative;
+      transition: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.03),
+        0 2px 6px rgba(0,0,0,0.5);
+    }
+
+    .safe-btn .btn-num {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: bold;
+      color: var(--text-dim);
+      transition: color 0.15s;
+      z-index: 1;
+    }
+
+    .safe-btn .btn-glow {
+      position: absolute;
+      inset: 0;
+      border-radius: 9px;
+      background: radial-gradient(circle at center, var(--amber-dim), transparent 70%);
+      opacity: 0;
+      transition: opacity 0.12s;
+    }
+
+    /* lit state (during sequence playback) */
+    .safe-btn.lit {
+      border-color: var(--amber-glow);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.05),
+        0 0 14px rgba(217, 123, 0, 0.5),
+        0 2px 6px rgba(0,0,0,0.5);
+    }
+    .safe-btn.lit .btn-num  { color: var(--amber-glow); text-shadow: 0 0 6px var(--amber); }
+    .safe-btn.lit .btn-glow { opacity: 1; }
+
+    /* pressed state (player input) */
+    .safe-btn.pressed {
+      border-color: var(--amber);
+      background: #1f1700;
+      box-shadow:
+        inset 0 2px 8px rgba(0,0,0,0.6),
+        0 0 10px rgba(217, 123, 0, 0.3);
+    }
+    .safe-btn.pressed .btn-num  { color: var(--amber); }
+    .safe-btn.pressed .btn-glow { opacity: 0.7; }
+
+    /* error flash */
+    .safe-btn.error {
+      border-color: var(--red-glow);
+      background: #1a0500;
+      box-shadow: 0 0 14px rgba(192, 57, 43, 0.5);
+    }
+    .safe-btn.error .btn-num  { color: var(--red-glow); text-shadow: 0 0 6px var(--red); }
+    .safe-btn.error .btn-glow { opacity: 1; background: radial-gradient(circle at center, rgba(192,57,43,0.3), transparent 70%); }
+
+    /* success flash */
+    .safe-btn.success {
+      border-color: var(--green-glow);
+      background: #001a07;
+      box-shadow: 0 0 14px rgba(30, 122, 60, 0.5);
+    }
+    .safe-btn.success .btn-num  { color: var(--green-glow); text-shadow: 0 0 6px var(--green); }
+    .safe-btn.success .btn-glow { opacity: 1; background: radial-gradient(circle at center, rgba(30,122,60,0.25), transparent 70%); }
+
+    .safe-btn:disabled { cursor: default; }
+
+    /* ── Start/Replay button ── */
+    .action-btn {
+      width: 100%;
+      padding: 10px;
+      background: transparent;
+      border: 1px solid var(--amber-dim);
+      border-radius: 8px;
+      color: var(--amber);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .action-btn:hover {
+      background: rgba(217, 123, 0, 0.08);
+      border-color: var(--amber);
+    }
+    .action-btn:active {
+      background: rgba(217, 123, 0, 0.15);
+    }
+    .action-btn.hidden { display: none; }
+
+    /* ── Win overlay ── */
+    .win-overlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      border-radius: 17px;
+      background: rgba(0,0,0,0.88);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      z-index: 10;
+    }
+    .win-overlay.show { display: flex; }
+
+    .win-icon {
+      font-size: 40px;
+      animation: win-pop 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+
+    .win-title {
+      font-size: 16px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--green-glow);
+      text-shadow: 0 0 16px var(--green);
+      animation: win-glow 1.8s ease-in-out infinite alternate;
+    }
+
+    .win-sub {
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+
+    .win-replay {
+      margin-top: 8px;
+      padding: 8px 28px;
+      background: transparent;
+      border: 1px solid var(--green);
+      border-radius: 6px;
+      color: var(--green-glow);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .win-replay:hover { background: rgba(46, 204, 113, 0.1); }
+
+    @keyframes win-pop {
+      0%   { transform: scale(0); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    @keyframes win-glow {
+      from { text-shadow: 0 0 8px var(--green); }
+      to   { text-shadow: 0 0 24px var(--green), 0 0 40px rgba(46,204,113,0.3); }
+    }
+
+    /* spinning unlock icon */
+    @keyframes unlock-spin {
+      0%   { transform: rotate(-20deg); }
+      30%  { transform: rotate(15deg); }
+      60%  { transform: rotate(-8deg); }
+      80%  { transform: rotate(5deg); }
+      100% { transform: rotate(0deg); }
+    }
+    .win-icon { animation: win-pop 0.4s cubic-bezier(0.34,1.56,0.64,1) both, unlock-spin 0.8s 0.3s ease both; }
+
+    /* border pulse on win */
+    .device.win-state {
+      animation: border-win 1.5s ease-in-out 3;
+    }
+    @keyframes border-win {
+      0%, 100% { border-color: var(--border); box-shadow: 0 0 0 1px #0e110d, 0 20px 60px rgba(0,0,0,0.8); }
+      50%       { border-color: var(--green);  box-shadow: 0 0 0 1px #0e110d, 0 20px 60px rgba(0,0,0,0.8), 0 0 30px rgba(46,204,113,0.2); }
+    }
+
+    /* ── Intro screen ── */
+    .intro-overlay {
+      position: absolute;
+      inset: 0;
+      border-radius: 17px;
+      background: var(--device);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      z-index: 10;
+    }
+    .intro-overlay.hidden { display: none; }
+
+    .intro-title {
+      font-size: 18px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--amber);
+      text-shadow: 0 0 12px var(--amber);
+    }
+
+    .intro-label {
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    .intro-start {
+      margin-top: 6px;
+      padding: 9px 30px;
+      background: transparent;
+      border: 1px solid var(--amber-dim);
+      border-radius: 6px;
+      color: var(--amber);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .intro-start:hover {
+      background: rgba(217, 123, 0, 0.1);
+      border-color: var(--amber);
+    }
+  </style>
+</head>
+<body>
+
+<div class="device" id="device">
+  <div class="screw-bl"></div>
+  <div class="screw-br"></div>
+
+  <!-- Intro overlay -->
+  <div class="intro-overlay" id="intro">
+    <div class="intro-label">raccoon city p.d.</div>
+    <div class="intro-title">portable safe</div>
+    <div class="intro-label">model r-02 // combination lock</div>
+    <button class="intro-start" id="intro-start-btn">initialize</button>
+  </div>
+
+  <!-- Win overlay -->
+  <div class="win-overlay" id="win-overlay">
+    <div class="win-icon">🔓</div>
+    <div class="win-title">safe unlocked</div>
+    <div class="win-sub">sequence verified — access granted</div>
+    <button class="win-replay" id="win-replay-btn">reset</button>
+  </div>
+
+  <div class="device-label">r-02 // memory lock</div>
+
+  <div class="display">
+    <div class="display-status" id="status-label">awaiting input</div>
+    <div class="display-main" id="main-label">—</div>
+  </div>
+
+  <div class="progress-bar" id="progress-bar"></div>
+
+  <div class="btn-grid" id="btn-grid"></div>
+
+  <button class="action-btn hidden" id="action-btn">begin sequence</button>
+</div>
+
+<script>
+  const SEQUENCE_LENGTH = 9;
+  const BUTTONS = 9;
+  const PLAYBACK_SPEED = 520;  // ms per step
+  const LIT_DURATION   = 360;  // ms button stays lit
+  const PRESS_FLASH    = 180;  // ms player press feedback
+
+  let sequence    = [];
+  let playerPos   = 0;
+  let round       = 0;         // current round (1-indexed), how many steps to show
+  let phase       = 'idle';    // idle | watch | input | transition
+  let inputLocked = false;
+
+  const deviceEl     = document.getElementById('device');
+  const introEl      = document.getElementById('intro');
+  const winEl        = document.getElementById('win-overlay');
+  const statusLabel  = document.getElementById('status-label');
+  const mainLabel    = document.getElementById('main-label');
+  const progressBar  = document.getElementById('progress-bar');
+  const btnGrid      = document.getElementById('btn-grid');
+  const actionBtn    = document.getElementById('action-btn');
+
+  // ── Build grid ──────────────────────────────────
+  const btns = [];
+  for (let i = 0; i < BUTTONS; i++) {
+    const b = document.createElement('button');
+    b.className = 'safe-btn';
+    b.disabled = true;
+    b.innerHTML = `<div class="btn-glow"></div><span class="btn-num">${i + 1}</span>`;
+    b.addEventListener('click', () => handlePress(i));
+    btnGrid.appendChild(b);
+    btns.push(b);
+  }
+
+  // ── Build progress dots ──────────────────────────
+  const dots = [];
+  for (let i = 0; i < SEQUENCE_LENGTH; i++) {
+    const d = document.createElement('div');
+    d.className = 'progress-dot';
+    progressBar.appendChild(d);
+    dots.push(d);
+  }
+
+  // ── Helpers ──────────────────────────────────────
+  function setDisplay(status, main, cls = '') {
+    statusLabel.textContent = status;
+    mainLabel.textContent   = main;
+    mainLabel.className     = 'display-main' + (cls ? ' ' + cls : '');
+  }
+
+  function clearBtnState(idx) {
+    btns[idx].classList.remove('lit', 'pressed', 'error', 'success');
+  }
+
+  function updateProgress() {
+    dots.forEach((d, i) => {
+      d.classList.remove('done', 'current');
+      if (i < round - 1) d.classList.add('done');
+      else if (i === round - 1) d.classList.add('current');
+    });
+  }
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  // ── Generate sequence ────────────────────────────
+  function generateSequence() {
+    sequence = [];
+    for (let i = 0; i < SEQUENCE_LENGTH; i++) {
+      let next;
+      do { next = Math.floor(Math.random() * BUTTONS); }
+      while (sequence.length > 0 && next === sequence[sequence.length - 1]);
+      sequence.push(next);
+    }
+  }
+
+  // ── Play back sequence up to `round` ─────────────
+  async function playSequence() {
+    phase = 'watch';
+    inputLocked = true;
+    btns.forEach(b => { b.disabled = true; });
+    actionBtn.classList.add('hidden');
+
+    setDisplay('watch carefully', `round ${round} / ${SEQUENCE_LENGTH}`);
+    await sleep(600);
+
+    for (let i = 0; i < round; i++) {
+      const idx = sequence[i];
+      btns[idx].classList.add('lit');
+      await sleep(LIT_DURATION);
+      btns[idx].classList.remove('lit');
+      await sleep(PLAYBACK_SPEED - LIT_DURATION);
+    }
+
+    await sleep(300);
+    startInput();
+  }
+
+  // ── Start input phase ────────────────────────────
+  function startInput() {
+    phase = 'input';
+    playerPos = 0;
+    inputLocked = false;
+    btns.forEach(b => { b.disabled = false; });
+    setDisplay('your turn', `[ ${playerPos + 1} / ${round} ]`);
+  }
+
+  // ── Handle player button press ────────────────────
+  async function handlePress(idx) {
+    if (phase !== 'input' || inputLocked) return;
+    inputLocked = true;
+
+    const correct = sequence[playerPos];
+
+    if (idx !== correct) {
+      // Wrong button
+      await flashError(idx, correct);
+      await failRound();
+      return;
+    }
+
+    // Correct
+    btns[idx].classList.add('pressed');
+    await sleep(PRESS_FLASH);
+    btns[idx].classList.remove('pressed');
+
+    playerPos++;
+    setDisplay('your turn', `[ ${playerPos + 1} / ${round} ]`);
+
+    if (playerPos === round) {
+      // Completed this round
+      await roundSuccess();
+    } else {
+      inputLocked = false;
+    }
+  }
+
+  async function flashError(wrongIdx, correctIdx) {
+    btns.forEach(b => { b.disabled = true; });
+    btns[wrongIdx].classList.add('error');
+    btns[correctIdx].classList.add('error');
+    setDisplay('denied', 'wrong button', 'red');
+    await sleep(600);
+    btns[wrongIdx].classList.remove('error');
+    btns[correctIdx].classList.remove('error');
+  }
+
+  async function failRound() {
+    phase = 'transition';
+    setDisplay('sequence reset', 'starting over', 'red');
+    await sleep(900);
+    round = 1;
+    playerPos = 0;
+    updateProgress();
+    setDisplay('resetting...', '---');
+    await sleep(500);
+    playSequence();
+  }
+
+  async function roundSuccess() {
+    phase = 'transition';
+    btns.forEach(b => { b.disabled = true; });
+
+    // Flash all green briefly
+    btns.forEach(b => b.classList.add('success'));
+    setDisplay('sequence confirmed', `round ${round} clear`, 'green');
+    await sleep(500);
+    btns.forEach(b => b.classList.remove('success'));
+
+    if (round === SEQUENCE_LENGTH) {
+      // WIN!
+      await sleep(400);
+      showWin();
+    } else {
+      round++;
+      updateProgress();
+      await sleep(400);
+      playSequence();
+    }
+  }
+
+  function showWin() {
+    phase = 'idle';
+    deviceEl.classList.add('win-state');
+    winEl.classList.add('show');
+    setDisplay('access granted', 'safe unlocked', 'green');
+  }
+
+  // ── Start game ───────────────────────────────────
+  function startGame() {
+    deviceEl.classList.remove('win-state');
+    winEl.classList.remove('show');
+    introEl.classList.add('hidden');
+    generateSequence();
+    round = 1;
+    playerPos = 0;
+    updateProgress();
+    setDisplay('initializing...', '---');
+    setTimeout(playSequence, 800);
+  }
+
+  // ── Button listeners ──────────────────────────────
+  document.getElementById('intro-start-btn').addEventListener('click', startGame);
+  document.getElementById('win-replay-btn').addEventListener('click', startGame);
+</script>
+
+</body>
+</html>

@@ -442,30 +442,24 @@
 
   <div class="btn-grid" id="btn-grid"></div>
 
-  <button class="action-btn hidden" id="action-btn">begin sequence</button>
 </div>
 
 <script>
   const SEQUENCE_LENGTH = 9;
-  const BUTTONS = 9;
-  const PLAYBACK_SPEED = 520;  // ms per step
-  const LIT_DURATION   = 360;  // ms button stays lit
-  const PRESS_FLASH    = 180;  // ms player press feedback
+  const BUTTONS         = 9;
+  const ERROR_FLASH_MS  = 650;  // ms buttons stay red on wrong press
 
-  let sequence    = [];
-  let playerPos   = 0;
-  let round       = 0;         // current round (1-indexed), how many steps to show
-  let phase       = 'idle';    // idle | watch | input | transition
-  let inputLocked = false;
+  let sequence  = [];
+  let playerPos = 0;
+  let phase     = 'idle';  // idle | input | animating
 
-  const deviceEl     = document.getElementById('device');
-  const introEl      = document.getElementById('intro');
-  const winEl        = document.getElementById('win-overlay');
-  const statusLabel  = document.getElementById('status-label');
-  const mainLabel    = document.getElementById('main-label');
-  const progressBar  = document.getElementById('progress-bar');
-  const btnGrid      = document.getElementById('btn-grid');
-  const actionBtn    = document.getElementById('action-btn');
+  const deviceEl    = document.getElementById('device');
+  const introEl     = document.getElementById('intro');
+  const winEl       = document.getElementById('win-overlay');
+  const statusLabel = document.getElementById('status-label');
+  const mainLabel   = document.getElementById('main-label');
+  const progressBar = document.getElementById('progress-bar');
+  const btnGrid     = document.getElementById('btn-grid');
 
   // ── Build grid ──────────────────────────────────
   const btns = [];
@@ -495,15 +489,11 @@
     mainLabel.className     = 'display-main' + (cls ? ' ' + cls : '');
   }
 
-  function clearBtnState(idx) {
-    btns[idx].classList.remove('lit', 'pressed', 'error', 'success');
-  }
-
   function updateProgress() {
     dots.forEach((d, i) => {
       d.classList.remove('done', 'current');
-      if (i < round - 1) d.classList.add('done');
-      else if (i === round - 1) d.classList.add('current');
+      if (i < playerPos) d.classList.add('done');
+      else if (i === playerPos) d.classList.add('current');
     });
   }
 
@@ -520,113 +510,43 @@
     }
   }
 
-  // ── Play back sequence up to `round` ─────────────
-  async function playSequence() {
-    phase = 'watch';
-    inputLocked = true;
-    btns.forEach(b => { b.disabled = true; });
-    actionBtn.classList.add('hidden');
-
-    setDisplay('watch carefully', `round ${round} / ${SEQUENCE_LENGTH}`);
-    await sleep(600);
-
-    for (let i = 0; i < round; i++) {
-      const idx = sequence[i];
-      btns[idx].classList.add('lit');
-      await sleep(LIT_DURATION);
-      btns[idx].classList.remove('lit');
-      await sleep(PLAYBACK_SPEED - LIT_DURATION);
-    }
-
-    await sleep(300);
-    startInput();
-  }
-
-  // ── Start input phase ────────────────────────────
-  function startInput() {
-    phase = 'input';
-    playerPos = 0;
-    inputLocked = false;
-    btns.forEach(b => { b.disabled = false; });
-    setDisplay('your turn', `[ ${playerPos + 1} / ${round} ]`);
-  }
-
-  // ── Handle player button press ────────────────────
+  // ── Handle player button press ───────────────────
   async function handlePress(idx) {
-    if (phase !== 'input' || inputLocked) return;
-    inputLocked = true;
+    if (phase !== 'input') return;
+    phase = 'animating';
 
-    const correct = sequence[playerPos];
-
-    if (idx !== correct) {
-      // Wrong button
-      await flashError(idx, correct);
-      await failRound();
-      return;
-    }
-
-    // Correct
-    btns[idx].classList.add('pressed');
-    await sleep(PRESS_FLASH);
-    btns[idx].classList.remove('pressed');
-
-    playerPos++;
-    setDisplay('your turn', `[ ${playerPos + 1} / ${round} ]`);
-
-    if (playerPos === round) {
-      // Completed this round
-      await roundSuccess();
-    } else {
-      inputLocked = false;
-    }
-  }
-
-  async function flashError(wrongIdx, correctIdx) {
-    btns.forEach(b => { b.disabled = true; });
-    btns[wrongIdx].classList.add('error');
-    btns[correctIdx].classList.add('error');
-    setDisplay('denied', 'wrong button', 'red');
-    await sleep(600);
-    btns[wrongIdx].classList.remove('error');
-    btns[correctIdx].classList.remove('error');
-  }
-
-  async function failRound() {
-    phase = 'transition';
-    setDisplay('sequence reset', 'starting over', 'red');
-    await sleep(900);
-    round = 1;
-    playerPos = 0;
-    updateProgress();
-    setDisplay('resetting...', '---');
-    await sleep(500);
-    playSequence();
-  }
-
-  async function roundSuccess() {
-    phase = 'transition';
-    btns.forEach(b => { b.disabled = true; });
-
-    // Flash all green briefly
-    btns.forEach(b => b.classList.add('success'));
-    setDisplay('sequence confirmed', `round ${round} clear`, 'green');
-    await sleep(500);
-    btns.forEach(b => b.classList.remove('success'));
-
-    if (round === SEQUENCE_LENGTH) {
-      // WIN!
-      await sleep(400);
-      showWin();
-    } else {
-      round++;
+    if (idx === sequence[playerPos]) {
+      // Correct — light up green, stay green
+      btns[idx].classList.add('success');
+      playerPos++;
       updateProgress();
-      await sleep(400);
-      playSequence();
+
+      if (playerPos === SEQUENCE_LENGTH) {
+        await sleep(400);
+        showWin();
+      } else {
+        setDisplay('confirmed', `step ${playerPos + 1} of ${SEQUENCE_LENGTH}`);
+        phase = 'input';
+      }
+    } else {
+      // Wrong — flash all red, then reset everything
+      setDisplay('access denied', 'wrong button', 'red');
+      btns.forEach(b => {
+        b.classList.remove('success');
+        b.classList.add('error');
+      });
+      await sleep(ERROR_FLASH_MS);
+      btns.forEach(b => b.classList.remove('error'));
+      playerPos = 0;
+      updateProgress();
+      setDisplay('find the code', `step 1 of ${SEQUENCE_LENGTH}`);
+      phase = 'input';
     }
   }
 
   function showWin() {
     phase = 'idle';
+    btns.forEach(b => { b.disabled = true; });
     deviceEl.classList.add('win-state');
     winEl.classList.add('show');
     setDisplay('access granted', 'safe unlocked', 'green');
@@ -638,11 +558,14 @@
     winEl.classList.remove('show');
     introEl.classList.add('hidden');
     generateSequence();
-    round = 1;
     playerPos = 0;
+    btns.forEach(b => {
+      b.classList.remove('success', 'error', 'lit', 'pressed');
+      b.disabled = false;
+    });
     updateProgress();
-    setDisplay('initializing...', '---');
-    setTimeout(playSequence, 800);
+    setDisplay('find the code', `step 1 of ${SEQUENCE_LENGTH}`);
+    phase = 'input';
   }
 
   // ── Button listeners ──────────────────────────────

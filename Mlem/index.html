@@ -3,27 +3,26 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>mlem — portable safe</title>
+  <title>mlem — phone.lock</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:        #080a09;
-      --device:    #111410;
-      --panel:     #161a15;
-      --border:    #2a3028;
-      --amber:     #d97b00;
-      --amber-glow:#ff9a1a;
-      --amber-dim: #3d2200;
-      --red:       #c0392b;
-      --red-glow:  #ff4444;
-      --green:     #1e7a3c;
-      --green-glow:#2ecc71;
-      --text:      #b8c4b2;
-      --text-dim:  #4a5548;
-      --text-bright:#e8f0e4;
-      --screw:     #1e2420;
-      --font-mono: 'Courier New', Courier, monospace;
+      --bg:          #06080f;
+      --device:      #0b0e1a;
+      --panel:       #0f1220;
+      --border:      #1c2845;
+      --accent:      #1d7afd;
+      --accent-glow: #5299ff;
+      --accent-dim:  #061530;
+      --red:         #c0392b;
+      --red-glow:    #ff4444;
+      --green:       #1e7a3c;
+      --green-glow:  #2ecc71;
+      --text:        #b8c8e8;
+      --text-dim:    #2e3f60;
+      --text-bright: #dde8ff;
+      --font-mono:   'Courier New', Courier, monospace;
     }
 
     html, body {
@@ -45,7 +44,7 @@
       font-size: 9px;
       letter-spacing: 0.08em;
       color: var(--text-dim);
-      opacity: 0.45;
+      opacity: 0.5;
       pointer-events: none;
       z-index: 10000;
     }
@@ -59,8 +58,8 @@
         0deg,
         transparent,
         transparent 2px,
-        rgba(0,0,0,0.08) 2px,
-        rgba(0,0,0,0.08) 4px
+        rgba(0,0,0,0.06) 2px,
+        rgba(0,0,0,0.06) 4px
       );
       pointer-events: none;
       z-index: 9999;
@@ -70,58 +69,45 @@
     .device {
       width: min(380px, 96vw);
       background: var(--device);
-      border: 1.5px solid var(--border);
-      border-radius: 18px;
-      padding: 24px 20px 28px;
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 20px 20px 28px;
       box-shadow:
-        0 0 0 1px #0e110d,
-        0 20px 60px rgba(0,0,0,0.8),
-        inset 0 1px 0 rgba(255,255,255,0.04);
+        0 0 0 1px #080c18,
+        0 24px 64px rgba(0,0,30,0.85),
+        inset 0 1px 0 rgba(100,140,255,0.06);
       position: relative;
       user-select: none;
     }
 
-    /* corner screws */
-    .device::before, .device::after,
-    .device .screw-bl, .device .screw-br {
-      content: '';
-      position: absolute;
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: var(--screw);
-      border: 1px solid #0d100c;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
-    }
-    .device::before  { top: 10px; left: 10px; }
-    .device::after   { top: 10px; right: 10px; }
-    .device .screw-bl { bottom: 10px; left: 10px; }
-    .device .screw-br { bottom: 10px; right: 10px; }
-
-    /* ── Header label ── */
-    .device-label {
-      text-align: center;
-      font-size: 9px;
-      letter-spacing: 0.3em;
+    /* ── Phone status bar ── */
+    .phone-status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 8px;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
       color: var(--text-dim);
-      margin-bottom: 10px;
+      margin-bottom: 14px;
+      padding: 0 2px;
     }
 
-    /* ── Stage badge ── */
+    /* ── Layer badge ── */
     .stage-badge {
       text-align: center;
       font-size: 11px;
       letter-spacing: 0.28em;
       text-transform: uppercase;
-      color: var(--amber);
-      text-shadow: 0 0 6px rgba(217,123,0,0.35);
+      color: var(--accent);
+      text-shadow: 0 0 8px rgba(29,122,253,0.4);
       margin-bottom: 12px;
     }
 
     /* ── Display screen ── */
     .display {
-      background: #060806;
-      border: 1px solid #1e2820;
+      background: #050710;
+      border: 1px solid #111a30;
       border-radius: 8px;
       padding: 10px 14px;
       margin-bottom: 18px;
@@ -132,7 +118,7 @@
       justify-content: center;
       gap: 4px;
       position: relative;
-      box-shadow: inset 0 2px 8px rgba(0,0,0,0.6);
+      box-shadow: inset 0 2px 10px rgba(0,0,0,0.7);
     }
 
     .display::before {
@@ -140,7 +126,7 @@
       position: absolute;
       inset: 0;
       border-radius: 8px;
-      background: linear-gradient(180deg, rgba(255,255,255,0.025) 0%, transparent 40%);
+      background: linear-gradient(180deg, rgba(100,140,255,0.03) 0%, transparent 50%);
       pointer-events: none;
     }
 
@@ -155,8 +141,8 @@
     .display-main {
       font-size: 15px;
       letter-spacing: 0.1em;
-      color: var(--amber);
-      text-shadow: 0 0 8px var(--amber);
+      color: var(--accent);
+      text-shadow: 0 0 10px rgba(29,122,253,0.5);
       text-transform: uppercase;
       transition: color 0.2s, text-shadow 0.2s;
     }
@@ -181,19 +167,19 @@
     }
 
     .progress-dot.done {
-      background: var(--amber);
-      box-shadow: 0 0 5px var(--amber);
+      background: var(--accent);
+      box-shadow: 0 0 5px var(--accent);
     }
 
     .progress-dot.current {
-      background: var(--amber-glow);
-      box-shadow: 0 0 8px var(--amber-glow);
+      background: var(--accent-glow);
+      box-shadow: 0 0 8px var(--accent-glow);
       animation: pulse-dot 1s ease-in-out infinite;
     }
 
     @keyframes pulse-dot {
-      0%, 100% { box-shadow: 0 0 5px var(--amber-glow); }
-      50%       { box-shadow: 0 0 12px var(--amber-glow); }
+      0%, 100% { box-shadow: 0 0 5px var(--accent-glow); }
+      50%       { box-shadow: 0 0 14px var(--accent-glow); }
     }
 
     /* ── Button grid ── */
@@ -207,8 +193,8 @@
     .safe-btn {
       aspect-ratio: 1;
       background: var(--panel);
-      border: 1.5px solid var(--border);
-      border-radius: 10px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
       cursor: pointer;
       position: relative;
       transition: opacity 0.3s;
@@ -216,18 +202,16 @@
       align-items: center;
       justify-content: center;
       box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.03),
-        0 2px 6px rgba(0,0,0,0.5);
+        inset 0 1px 0 rgba(100,140,255,0.04),
+        0 2px 8px rgba(0,0,0,0.5);
     }
 
-    /* inactive — not part of current stage */
     .safe-btn.inactive {
-      opacity: 0.12;
+      opacity: 0.1;
       cursor: default;
       pointer-events: none;
     }
 
-    /* ── Number label (stages 1-5) ── */
     .safe-btn .btn-num {
       font-family: var(--font-mono);
       font-size: 13px;
@@ -237,7 +221,6 @@
       z-index: 1;
     }
 
-    /* ── Shape SVG (stages 6-7) ── */
     .safe-btn .btn-shape {
       width: 52%;
       height: 52%;
@@ -248,12 +231,11 @@
       transition: fill 0.12s, filter 0.12s;
     }
 
-    /* ── Glow layer ── */
     .safe-btn .btn-glow {
       position: absolute;
       inset: 0;
-      border-radius: 9px;
-      background: radial-gradient(circle at center, var(--amber-dim), transparent 70%);
+      border-radius: 11px;
+      background: radial-gradient(circle at center, var(--accent-dim), transparent 70%);
       opacity: 0;
       transition: opacity 0.12s;
     }
@@ -262,21 +244,21 @@
     .safe-btn.error {
       border-color: var(--red-glow);
       background: #1a0500;
-      box-shadow: 0 0 14px rgba(192, 57, 43, 0.5);
+      box-shadow: 0 0 14px rgba(192,57,43,0.45);
     }
     .safe-btn.error .btn-num   { color: var(--red-glow); text-shadow: 0 0 6px var(--red); }
     .safe-btn.error .btn-shape { fill: var(--red-glow); filter: drop-shadow(0 0 4px rgba(255,68,68,0.7)); }
-    .safe-btn.error .btn-glow  { opacity: 1; background: radial-gradient(circle at center, rgba(192,57,43,0.3), transparent 70%); }
+    .safe-btn.error .btn-glow  { opacity: 1; background: radial-gradient(circle at center, rgba(192,57,43,0.25), transparent 70%); }
 
     /* confirmed correct */
     .safe-btn.success {
       border-color: var(--green-glow);
       background: #001a07;
-      box-shadow: 0 0 14px rgba(30, 122, 60, 0.5);
+      box-shadow: 0 0 14px rgba(30,122,60,0.5);
     }
     .safe-btn.success .btn-num   { color: var(--green-glow); text-shadow: 0 0 6px var(--green); }
     .safe-btn.success .btn-shape { fill: var(--green-glow); filter: drop-shadow(0 0 4px rgba(46,204,113,0.6)); }
-    .safe-btn.success .btn-glow  { opacity: 1; background: radial-gradient(circle at center, rgba(30,122,60,0.25), transparent 70%); }
+    .safe-btn.success .btn-glow  { opacity: 1; background: radial-gradient(circle at center, rgba(30,122,60,0.2), transparent 70%); }
 
     .safe-btn:disabled:not(.inactive):not(.success) { cursor: default; }
 
@@ -285,8 +267,8 @@
       display: none;
       position: absolute;
       inset: 0;
-      border-radius: 17px;
-      background: rgba(0,0,0,0.88);
+      border-radius: 23px;
+      background: rgba(0,0,0,0.9);
       flex-direction: column;
       align-items: center;
       justify-content: center;
@@ -311,9 +293,11 @@
 
     .win-sub {
       font-size: 10px;
-      letter-spacing: 0.15em;
+      letter-spacing: 0.12em;
       color: var(--text-dim);
       text-transform: uppercase;
+      text-align: center;
+      padding: 0 20px;
     }
 
     .win-replay {
@@ -330,7 +314,7 @@
       cursor: pointer;
       transition: background 0.15s;
     }
-    .win-replay:hover { background: rgba(46, 204, 113, 0.1); }
+    .win-replay:hover { background: rgba(46,204,113,0.1); }
 
     @keyframes win-pop {
       0%   { transform: scale(0); opacity: 0; }
@@ -350,20 +334,19 @@
       100% { transform: rotate(0deg); }
     }
 
-    /* border pulse on win */
     .device.win-state {
       animation: border-win 1.5s ease-in-out 3;
     }
     @keyframes border-win {
-      0%, 100% { border-color: var(--border); box-shadow: 0 0 0 1px #0e110d, 0 20px 60px rgba(0,0,0,0.8); }
-      50%       { border-color: var(--green);  box-shadow: 0 0 0 1px #0e110d, 0 20px 60px rgba(0,0,0,0.8), 0 0 30px rgba(46,204,113,0.2); }
+      0%, 100% { border-color: var(--border); box-shadow: 0 0 0 1px #080c18, 0 24px 64px rgba(0,0,30,0.85); }
+      50%       { border-color: var(--green);  box-shadow: 0 0 0 1px #080c18, 0 24px 64px rgba(0,0,30,0.85), 0 0 30px rgba(46,204,113,0.15); }
     }
 
     /* ── Intro screen ── */
     .intro-overlay {
       position: absolute;
       inset: 0;
-      border-radius: 17px;
+      border-radius: 23px;
       background: var(--device);
       display: flex;
       flex-direction: column;
@@ -375,16 +358,16 @@
     .intro-overlay.hidden { display: none; }
 
     .intro-title {
-      font-size: 18px;
-      letter-spacing: 0.3em;
+      font-size: 20px;
+      letter-spacing: 0.2em;
       text-transform: uppercase;
-      color: var(--amber);
-      text-shadow: 0 0 12px var(--amber);
+      color: var(--accent);
+      text-shadow: 0 0 16px rgba(29,122,253,0.5);
     }
 
     .intro-label {
       font-size: 9px;
-      letter-spacing: 0.2em;
+      letter-spacing: 0.22em;
       text-transform: uppercase;
       color: var(--text-dim);
     }
@@ -393,9 +376,9 @@
       margin-top: 6px;
       padding: 9px 30px;
       background: transparent;
-      border: 1px solid var(--amber-dim);
+      border: 1px solid var(--accent-dim);
       border-radius: 6px;
-      color: var(--amber);
+      color: var(--accent);
       font-family: var(--font-mono);
       font-size: 10px;
       letter-spacing: 0.2em;
@@ -404,38 +387,40 @@
       transition: background 0.15s, border-color 0.15s;
     }
     .intro-start:hover {
-      background: rgba(217, 123, 0, 0.1);
-      border-color: var(--amber);
+      background: rgba(29,122,253,0.08);
+      border-color: var(--accent);
     }
   </style>
 </head>
 <body>
 
-<div class="version-stamp">v1.2 · 2026-03-29</div>
+<div class="version-stamp">v1.3 · 2026-03-29</div>
 
 <div class="device" id="device">
-  <div class="screw-bl"></div>
-  <div class="screw-br"></div>
 
   <!-- Intro overlay -->
   <div class="intro-overlay" id="intro">
-    <div class="intro-label">raccoon city p.d.</div>
-    <div class="intro-title">portable safe</div>
-    <div class="intro-label">model r-02 // combination lock</div>
-    <button class="intro-start" id="intro-start-btn">initialize</button>
+    <div class="intro-label">nexus security systems</div>
+    <div class="intro-title">phone.lock</div>
+    <div class="intro-label">multi-layer authentication</div>
+    <button class="intro-start" id="intro-start-btn">begin unlock</button>
   </div>
 
-  <!-- Win overlay (shown after all stages clear) -->
+  <!-- Win overlay -->
   <div class="win-overlay" id="win-overlay">
     <div class="win-icon">🔓</div>
-    <div class="win-title">safe unlocked</div>
-    <div class="win-sub">all stages cleared — access granted</div>
-    <button class="win-replay" id="win-replay-btn">reset</button>
+    <div class="win-title">device unlocked</div>
+    <div class="win-sub">all layers cleared · identity confirmed</div>
+    <button class="win-replay" id="win-replay-btn">lock device</button>
   </div>
 
-  <div class="device-label">r-02 // memory lock</div>
+  <div class="phone-status">
+    <span>nexus</span>
+    <span>▪ locked ▪</span>
+    <span>s7</span>
+  </div>
 
-  <div class="stage-badge" id="stage-badge">stage 1</div>
+  <div class="stage-badge" id="stage-badge">layer 1</div>
 
   <div class="display">
     <div class="display-status" id="status-label">awaiting input</div>
@@ -449,8 +434,8 @@
 </div>
 
 <script>
-  // ── Stage configuration ──────────────────────────
-  // buttons:   grid indices (0-8) active for this stage
+  // ── Layer configuration ──────────────────────────
+  // buttons:   grid indices (0-8) active for this layer
   // shapeMode: undefined = number labels
   //            'groups'  = 3 shapes × 3 buttons each (square/circle/triangle)
   //            'unique'  = 9 fully distinct shapes
@@ -460,17 +445,16 @@
   //                 6 7 8
   //
   const STAGES = [
-    { buttons: [4] },                             // stage 1 — center
-    { buttons: [3, 5] },                          // stage 2 — L/R flanks
-    { buttons: [1, 4, 7] },                       // stage 3 — vertical strip
-    { buttons: [0, 2, 6, 8] },                    // stage 4 — four corners
-    { buttons: [0, 1, 2, 3, 4, 5, 6, 7, 8] },    // stage 5 — all (numbered)
-    { buttons: [0, 1, 2, 3, 4, 5, 6, 7, 8], shapeMode: 'groups'  }, // stage 6 — 3 shape groups
-    { buttons: [0, 1, 2, 3, 4, 5, 6, 7, 8], shapeMode: 'unique'  }, // stage 7 — 9 unique shapes
+    { buttons: [4] },                             // layer 1 — center
+    { buttons: [3, 5] },                          // layer 2 — L/R flanks
+    { buttons: [1, 4, 7] },                       // layer 3 — vertical strip
+    { buttons: [0, 2, 6, 8] },                    // layer 4 — four corners
+    { buttons: [0, 1, 2, 3, 4, 5, 6, 7, 8] },    // layer 5 — all (numbered)
+    { buttons: [0, 1, 2, 3, 4, 5, 6, 7, 8], shapeMode: 'groups'  }, // layer 6 — 3 shape groups
+    { buttons: [0, 1, 2, 3, 4, 5, 6, 7, 8], shapeMode: 'unique'  }, // layer 7 — 9 unique shapes
   ];
 
   // ── Shape SVG definitions (24×24 viewBox) ────────
-  // fill is controlled entirely by CSS (.btn-shape, .success, .error)
   const SHAPES = {
     square:   `<rect x="5" y="5" width="14" height="14"/>`,
     circle:   `<circle cx="12" cy="12" r="7"/>`,
@@ -483,7 +467,6 @@
     heart:    `<path d="M12,20 C12,20 3,13 3,8 C3,5 5.5,3 8,3 C10,3 11.5,4.5 12,5.5 C12.5,4.5 14,3 16,3 C18.5,3 21,5 21,8 C21,13 12,20 12,20Z"/>`,
   };
 
-  // Pool for each shape mode
   const GROUP_SHAPES  = ['square', 'circle', 'triangle',
                          'square', 'circle', 'triangle',
                          'square', 'circle', 'triangle'];
@@ -498,7 +481,7 @@
   let playerPos    = 0;
   let stageIdx     = 0;
   let phase        = 'idle';
-  let buttonShapes = [];   // shape name per button index, populated in shape stages
+  let buttonShapes = [];
 
   const deviceEl    = document.getElementById('device');
   const introEl     = document.getElementById('intro');
@@ -538,7 +521,7 @@
     return arr;
   }
 
-  // ── Progress dots (rebuilt per stage) ────────────
+  // ── Progress dots (rebuilt per layer) ────────────
   let dots = [];
   function buildDots(count) {
     progressBar.innerHTML = '';
@@ -566,27 +549,25 @@
 
   // ── Shape assignment ──────────────────────────────
   function assignShapes(mode) {
-    const pool = shuffleArray(
+    buttonShapes = shuffleArray(
       mode === 'groups' ? [...GROUP_SHAPES] : [...UNIQUE_SHAPES]
     );
-    buttonShapes = pool; // index i → shape name for button i
   }
 
   function shapeToSVG(name) {
     return `<svg class="btn-shape" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">${SHAPES[name]}</svg>`;
   }
 
-  // ── Apply stage layout ────────────────────────────
+  // ── Apply layer layout ────────────────────────────
   function applyStageLayout(idx) {
     const { buttons, shapeMode } = STAGES[idx];
     if (shapeMode) assignShapes(shapeMode);
-    stageBadge.textContent = `stage ${idx + 1}`;
+    stageBadge.textContent = `layer ${idx + 1}`;
     btns.forEach((b, i) => {
       const active = buttons.includes(i);
       b.classList.remove('success', 'error');
       b.classList.toggle('inactive', !active);
       b.disabled = !active;
-      // Set button face content
       b.innerHTML = shapeMode
         ? `<div class="btn-glow"></div>${shapeToSVG(buttonShapes[i])}`
         : `<div class="btn-glow"></div><span class="btn-num">${i + 1}</span>`;
@@ -600,7 +581,6 @@
     phase = 'animating';
 
     if (idx === sequence[playerPos]) {
-      // Correct — light up green and lock out
       btns[idx].classList.add('success');
       btns[idx].disabled = true;
       playerPos++;
@@ -613,9 +593,8 @@
         phase = 'input';
       }
     } else {
-      // Wrong — flash active buttons red, then reset to step 1
       const active = STAGES[stageIdx].buttons;
-      setDisplay('access denied', 'wrong button', 'red');
+      setDisplay('access denied', 'wrong input', 'red');
       active.forEach(i => {
         btns[i].classList.remove('success');
         btns[i].classList.add('error');
@@ -627,15 +606,15 @@
       });
       playerPos = 0;
       updateProgress();
-      setDisplay('find the code', `step 1 of ${sequence.length}`);
+      setDisplay('tap sequence', `step 1 of ${sequence.length}`);
       phase = 'input';
     }
   }
 
-  // ── Stage clear ───────────────────────────────────
+  // ── Layer clear ───────────────────────────────────
   async function stageClear() {
     phase = 'transition';
-    setDisplay(`stage ${stageIdx + 1} clear`, 'sequence verified', 'green');
+    setDisplay(`layer ${stageIdx + 1} cleared`, 'auth passed', 'green');
     await sleep(STAGE_CLEAR_MS);
 
     if (stageIdx === STAGES.length - 1) {
@@ -646,13 +625,13 @@
     }
   }
 
-  // ── Start a stage ─────────────────────────────────
+  // ── Start a layer ─────────────────────────────────
   function startStage() {
     applyStageLayout(stageIdx);
     generateSequence(STAGES[stageIdx].buttons);
     playerPos = 0;
     updateProgress();
-    setDisplay('find the code', `step 1 of ${sequence.length}`);
+    setDisplay('tap sequence', `step 1 of ${sequence.length}`);
     phase = 'input';
   }
 
@@ -662,10 +641,10 @@
     btns.forEach(b => { b.disabled = true; });
     deviceEl.classList.add('win-state');
     winEl.classList.add('show');
-    setDisplay('access granted', 'safe unlocked', 'green');
+    setDisplay('identity confirmed', 'device unlocked', 'green');
   }
 
-  // ── Start / restart game ──────────────────────────
+  // ── Start / restart ───────────────────────────────
   function startGame() {
     deviceEl.classList.remove('win-state');
     winEl.classList.remove('show');

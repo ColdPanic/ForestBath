@@ -227,6 +227,7 @@
       pointer-events: none;
     }
 
+    /* ── Number label (stages 1-5) ── */
     .safe-btn .btn-num {
       font-family: var(--font-mono);
       font-size: 13px;
@@ -236,6 +237,18 @@
       z-index: 1;
     }
 
+    /* ── Shape SVG (stages 6-7) ── */
+    .safe-btn .btn-shape {
+      width: 52%;
+      height: 52%;
+      fill: var(--text-dim);
+      z-index: 1;
+      position: relative;
+      overflow: visible;
+      transition: fill 0.12s, filter 0.12s;
+    }
+
+    /* ── Glow layer ── */
     .safe-btn .btn-glow {
       position: absolute;
       inset: 0;
@@ -251,8 +264,9 @@
       background: #1a0500;
       box-shadow: 0 0 14px rgba(192, 57, 43, 0.5);
     }
-    .safe-btn.error .btn-num  { color: var(--red-glow); text-shadow: 0 0 6px var(--red); }
-    .safe-btn.error .btn-glow { opacity: 1; background: radial-gradient(circle at center, rgba(192,57,43,0.3), transparent 70%); }
+    .safe-btn.error .btn-num   { color: var(--red-glow); text-shadow: 0 0 6px var(--red); }
+    .safe-btn.error .btn-shape { fill: var(--red-glow); filter: drop-shadow(0 0 4px rgba(255,68,68,0.7)); }
+    .safe-btn.error .btn-glow  { opacity: 1; background: radial-gradient(circle at center, rgba(192,57,43,0.3), transparent 70%); }
 
     /* confirmed correct */
     .safe-btn.success {
@@ -260,8 +274,9 @@
       background: #001a07;
       box-shadow: 0 0 14px rgba(30, 122, 60, 0.5);
     }
-    .safe-btn.success .btn-num  { color: var(--green-glow); text-shadow: 0 0 6px var(--green); }
-    .safe-btn.success .btn-glow { opacity: 1; background: radial-gradient(circle at center, rgba(30,122,60,0.25), transparent 70%); }
+    .safe-btn.success .btn-num   { color: var(--green-glow); text-shadow: 0 0 6px var(--green); }
+    .safe-btn.success .btn-shape { fill: var(--green-glow); filter: drop-shadow(0 0 4px rgba(46,204,113,0.6)); }
+    .safe-btn.success .btn-glow  { opacity: 1; background: radial-gradient(circle at center, rgba(30,122,60,0.25), transparent 70%); }
 
     .safe-btn:disabled:not(.inactive):not(.success) { cursor: default; }
 
@@ -396,7 +411,7 @@
 </head>
 <body>
 
-<div class="version-stamp">v1.1 · 2026-03-29</div>
+<div class="version-stamp">v1.2 · 2026-03-29</div>
 
 <div class="device" id="device">
   <div class="screw-bl"></div>
@@ -435,9 +450,10 @@
 
 <script>
   // ── Stage configuration ──────────────────────────
-  // buttons: grid indices (0-8) active for this stage.
-  // Sequence = Fisher-Yates shuffle of active buttons,
-  // so each button appears exactly once per stage.
+  // buttons:   grid indices (0-8) active for this stage
+  // shapeMode: undefined = number labels
+  //            'groups'  = 3 shapes × 3 buttons each (square/circle/triangle)
+  //            'unique'  = 9 fully distinct shapes
   //
   //   Grid layout:  0 1 2
   //                 3 4 5
@@ -448,17 +464,41 @@
     { buttons: [3, 5] },                          // stage 2 — L/R flanks
     { buttons: [1, 4, 7] },                       // stage 3 — vertical strip
     { buttons: [0, 2, 6, 8] },                    // stage 4 — four corners
-    { buttons: [0, 1, 2, 3, 4, 5, 6, 7, 8] },    // stage 5 — all
+    { buttons: [0, 1, 2, 3, 4, 5, 6, 7, 8] },    // stage 5 — all (numbered)
+    { buttons: [0, 1, 2, 3, 4, 5, 6, 7, 8], shapeMode: 'groups'  }, // stage 6 — 3 shape groups
+    { buttons: [0, 1, 2, 3, 4, 5, 6, 7, 8], shapeMode: 'unique'  }, // stage 7 — 9 unique shapes
   ];
+
+  // ── Shape SVG definitions (24×24 viewBox) ────────
+  // fill is controlled entirely by CSS (.btn-shape, .success, .error)
+  const SHAPES = {
+    square:   `<rect x="5" y="5" width="14" height="14"/>`,
+    circle:   `<circle cx="12" cy="12" r="7"/>`,
+    triangle: `<polygon points="12,4 21,20 3,20"/>`,
+    diamond:  `<polygon points="12,3 21,12 12,21 3,12"/>`,
+    pentagon: `<polygon points="12,4 19.6,9.5 16.7,18.5 7.3,18.5 4.4,9.5"/>`,
+    hexagon:  `<polygon points="12,4 19,8 19,16 12,20 5,16 5,8"/>`,
+    star:     `<polygon points="12,3 14.2,8.9 20.6,9.2 15.6,13.2 17.3,19.3 12,15.8 6.7,19.3 8.4,13.2 3.4,9.2 9.8,8.9"/>`,
+    cross:    `<path d="M9,4 h6 v5 h5 v6 h-5 v5 h-6 v-5 h-5 v-6 h5 z"/>`,
+    heart:    `<path d="M12,20 C12,20 3,13 3,8 C3,5 5.5,3 8,3 C10,3 11.5,4.5 12,5.5 C12.5,4.5 14,3 16,3 C18.5,3 21,5 21,8 C21,13 12,20 12,20Z"/>`,
+  };
+
+  // Pool for each shape mode
+  const GROUP_SHAPES  = ['square', 'circle', 'triangle',
+                         'square', 'circle', 'triangle',
+                         'square', 'circle', 'triangle'];
+  const UNIQUE_SHAPES = ['square', 'circle', 'triangle', 'diamond',
+                         'pentagon', 'hexagon', 'star', 'cross', 'heart'];
 
   const ERROR_FLASH_MS = 150;
   const STAGE_CLEAR_MS = 900;
   const TOTAL_BUTTONS  = 9;
 
-  let sequence  = [];
-  let playerPos = 0;
-  let stageIdx  = 0;
-  let phase     = 'idle';
+  let sequence     = [];
+  let playerPos    = 0;
+  let stageIdx     = 0;
+  let phase        = 'idle';
+  let buttonShapes = [];   // shape name per button index, populated in shape stages
 
   const deviceEl    = document.getElementById('device');
   const introEl     = document.getElementById('intro');
@@ -490,6 +530,14 @@
 
   function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+  function shuffleArray(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
   // ── Progress dots (rebuilt per stage) ────────────
   let dots = [];
   function buildDots(count) {
@@ -511,25 +559,37 @@
     });
   }
 
-  // ── Sequence: shuffle of active buttons ──────────
+  // ── Sequence: shuffle of active button indices ───
   function generateSequence(activeButtons) {
-    const pool = [...activeButtons];
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
-    }
-    sequence = pool;
+    sequence = shuffleArray([...activeButtons]);
+  }
+
+  // ── Shape assignment ──────────────────────────────
+  function assignShapes(mode) {
+    const pool = shuffleArray(
+      mode === 'groups' ? [...GROUP_SHAPES] : [...UNIQUE_SHAPES]
+    );
+    buttonShapes = pool; // index i → shape name for button i
+  }
+
+  function shapeToSVG(name) {
+    return `<svg class="btn-shape" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">${SHAPES[name]}</svg>`;
   }
 
   // ── Apply stage layout ────────────────────────────
   function applyStageLayout(idx) {
-    const { buttons } = STAGES[idx];
+    const { buttons, shapeMode } = STAGES[idx];
+    if (shapeMode) assignShapes(shapeMode);
     stageBadge.textContent = `stage ${idx + 1}`;
     btns.forEach((b, i) => {
       const active = buttons.includes(i);
       b.classList.remove('success', 'error');
       b.classList.toggle('inactive', !active);
       b.disabled = !active;
+      // Set button face content
+      b.innerHTML = shapeMode
+        ? `<div class="btn-glow"></div>${shapeToSVG(buttonShapes[i])}`
+        : `<div class="btn-glow"></div><span class="btn-num">${i + 1}</span>`;
     });
     buildDots(buttons.length);
   }

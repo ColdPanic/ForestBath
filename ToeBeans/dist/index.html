@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Setsris</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #1a1a2e; overflow: hidden; }
+
+    #help-btn {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 100;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255,255,255,0.35);
+      background: rgba(0,0,0,0.45);
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+      font-family: serif;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #help-btn:hover { border-color: #fff; color: #fff; }
+
+    #help-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(0,0,0,0.75);
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    #help-overlay.open { display: flex; }
+
+    #help-modal {
+      background: #1c1f3a;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 14px;
+      padding: 28px 24px;
+      max-width: 360px;
+      width: 100%;
+      color: #dde;
+      font-family: system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    #help-modal h2 {
+      font-size: 18px;
+      color: #fff;
+      margin-bottom: 14px;
+    }
+    #help-modal p { margin-bottom: 12px; }
+    #help-modal .rule {
+      background: rgba(255,255,255,0.06);
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 10px;
+    }
+    #help-modal .rule strong { color: #fff; }
+    #help-modal .valid   { color: #44ff88; font-weight: bold; }
+    #help-modal .invalid { color: #ff6b6b; font-weight: bold; }
+    #help-modal .close-btn {
+      margin-top: 18px;
+      width: 100%;
+      padding: 9px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.07);
+      color: #ccd;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    #help-modal .close-btn:hover { background: rgba(255,255,255,0.13); }
+  </style>
+  <script type="module" crossorigin src="./assets/index-f478a30e.js"></script>
+</head>
+<body>
+  <button id="help-btn" onclick="openHelp()">?</button>
+
+  <div id="help-overlay" onclick="closeHelp(event)">
+    <div id="help-modal">
+      <h2>What is a Set?</h2>
+      <p>Each card has four attributes: <strong>color</strong>, <strong>shape</strong>, <strong>fill</strong>, and <strong>count</strong>. Three cards form a <em>Set</em> when, for each attribute, the values across the three cards are either <strong>all the same</strong> or <strong>all different</strong>.</p>
+
+      <div class="rule">
+        <strong>Color</strong> — red · green · purple<br>
+        must be all the same <em>or</em> all different
+      </div>
+      <div class="rule">
+        <strong>Shape</strong> — diamond · oval · squiggle<br>
+        must be all the same <em>or</em> all different
+      </div>
+      <div class="rule">
+        <strong>Fill</strong> — solid · striped · empty<br>
+        must be all the same <em>or</em> all different
+      </div>
+      <div class="rule">
+        <strong>Count</strong> — 1 · 2 · 3 symbols<br>
+        must be all the same <em>or</em> all different
+      </div>
+
+      <p><span class="valid">✓ Valid:</span> 1 red solid diamond · 2 green striped ovals · 3 purple empty squiggles<br>
+      <em>(all different on every attribute)</em></p>
+
+      <p><span class="invalid">✗ Not a Set:</span> 1 red solid diamond · 2 red solid ovals · 3 red striped squiggles<br>
+      <em>(fill has two solid, one striped — neither all same nor all different)</em></p>
+
+      <button class="close-btn" onclick="closeHelp()">Got it</button>
+    </div>
+  </div>
+
+  <script>
+    function openHelp()        { document.getElementById('help-overlay').classList.add('open') }
+    function closeHelp(e) {
+      if (!e || e.target === document.getElementById('help-overlay'))
+        document.getElementById('help-overlay').classList.remove('open')
+    }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeHelp() })
+  </script>
+
+  
+</body>
+</html>

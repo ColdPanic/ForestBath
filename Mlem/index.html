@@ -262,6 +262,64 @@
 
     .safe-btn:disabled:not(.inactive):not(.success) { cursor: default; }
 
+    /* ── Center tile padlock animation ── */
+    .safe-btn.lock-anim {
+      opacity: 1 !important;
+      pointer-events: none;
+      cursor: default;
+      border-color: #1d7afd;
+      background: #061530;
+      animation: lock-btn-flash 0.85s ease forwards;
+    }
+    @keyframes lock-btn-flash {
+      0%   { border-color: #1d7afd; background: #061530; box-shadow: 0 0 12px rgba(29,122,253,0.4); }
+      55%  { border-color: #2ecc71; background: #001a07; box-shadow: 0 0 22px rgba(46,204,113,0.55); }
+      100% { border-color: #2ecc71; background: #001a07; box-shadow: 0 0 16px rgba(46,204,113,0.4); }
+    }
+
+    .lock-svg {
+      width: 56%; height: 56%;
+      overflow: visible;
+      z-index: 1;
+      position: relative;
+    }
+    .lock-body {
+      fill: #1d7afd;
+      animation: lock-body-color 0.85s ease forwards;
+    }
+    @keyframes lock-body-color {
+      0%   { fill: #1d7afd; }
+      55%  { fill: #2ecc71; }
+      100% { fill: #2ecc71; }
+    }
+    .lock-hole {
+      fill: #06080f;
+      animation: lock-hole-bg 0.85s ease forwards;
+    }
+    @keyframes lock-hole-bg {
+      0%   { fill: #06080f; }
+      55%  { fill: #001a07; }
+      100% { fill: #001a07; }
+    }
+    .lock-shackle {
+      fill: none;
+      stroke: #1d7afd;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      transform-box: fill-box;
+      transform-origin: right bottom;
+      animation: shackle-open 0.85s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+    @keyframes shackle-open {
+      /* phase 1: shackle lifts straight up out of the body */
+      0%   { transform: translateY(0)    rotate(0deg);    stroke: #1d7afd; }
+      25%  { transform: translateY(-3px) rotate(0deg);    stroke: #1d7afd; }
+      /* phase 2: swing open (left leg arcs upward, right leg stays anchored) */
+      65%  { transform: translateY(-3px) rotate(-50deg);  stroke: #2ecc71; }
+      80%  { transform: translateY(-3px) rotate(-44deg); }
+      100% { transform: translateY(-3px) rotate(-47deg);  stroke: #2ecc71; }
+    }
+
     /* ── Win overlay ── */
     .win-overlay {
       display: none;
@@ -565,7 +623,7 @@
     stageBadge.textContent = `layer ${idx + 1}`;
     btns.forEach((b, i) => {
       const active = buttons.includes(i);
-      b.classList.remove('success', 'error');
+      b.classList.remove('success', 'error', 'lock-anim');
       b.classList.toggle('inactive', !active);
       b.disabled = !active;
       b.innerHTML = shapeMode
@@ -611,10 +669,27 @@
     }
   }
 
+  // ── Center tile padlock unlock animation ─────────
+  function showLockAnimation() {
+    const b = btns[4];
+    b.classList.remove('inactive', 'success', 'error', 'lock-anim');
+    // Force reflow so re-adding the class restarts the animation
+    void b.offsetWidth;
+    b.classList.add('lock-anim');
+    b.innerHTML = `
+      <div class="btn-glow"></div>
+      <svg class="lock-svg" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <rect class="lock-body" x="3" y="11" width="18" height="12" rx="2"/>
+        <circle class="lock-hole" cx="12" cy="17" r="1.5"/>
+        <path class="lock-shackle" d="M8,11 L8,7 A4,4 0 0,1 16,7 L16,11"/>
+      </svg>`;
+  }
+
   // ── Layer clear ───────────────────────────────────
   async function stageClear() {
     phase = 'transition';
     setDisplay(`layer ${stageIdx + 1} cleared`, 'auth passed', 'green');
+    showLockAnimation();
     await sleep(STAGE_CLEAR_MS);
 
     if (stageIdx === STAGES.length - 1) {

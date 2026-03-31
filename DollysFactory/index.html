@@ -294,7 +294,7 @@ let skillCheck = {
   active: false,
   needle: 0,        // 0..1
   dir: 1,
-  speed: 0.012,
+  speed: 0.004,
   zoneStart: 0.38,
   zoneWidth: 0.18,
   pendingPress: false,
@@ -308,7 +308,7 @@ function showSkillCheck() {
   skillCheck.active = true;
   skillCheck.needle = 0;
   skillCheck.dir = 1;
-  skillCheck.speed = 0.012 + Math.random() * 0.008;
+  skillCheck.speed = 0.004 + Math.random() * 0.002;
   skillCheck.zoneStart = 0.25 + Math.random() * 0.35;
   skillCheck.zoneWidth = 0.15 + Math.random() * 0.1;
   skillCheck.pendingPress = false;

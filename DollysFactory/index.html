@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dolly's Factory</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #1a0f1e;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'Segoe UI', sans-serif;
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    image-rendering: pixelated;
+  }
+  #ui {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    pointer-events: none;
+  }
+  .ui-pill {
+    background: rgba(255,182,193,0.22);
+    border: 1.5px solid rgba(255,182,193,0.5);
+    border-radius: 20px;
+    padding: 5px 16px;
+    color: #ffd6e8;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    backdrop-filter: blur(6px);
+  }
+  #train-ready {
+    background: rgba(150,255,180,0.2);
+    border-color: rgba(150,255,180,0.6);
+    color: #b8ffcc;
+    animation: pulse 1s ease-in-out infinite;
+    display: none;
+  }
+  @keyframes pulse {
+    0%,100% { opacity:1; }
+    50% { opacity:0.55; }
+  }
+  #overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(20,8,26,0.88);
+    backdrop-filter: blur(4px);
+    color: #ffd6e8;
+    gap: 16px;
+  }
+  #overlay h1 {
+    font-size: clamp(28px, 5vw, 52px);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  #overlay p {
+    font-size: 15px;
+    color: #c8a8d8;
+    max-width: 420px;
+    text-align: center;
+    line-height: 1.6;
+  }
+  #overlay .controls-grid {
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: 4px 16px;
+    font-size: 13px;
+    color: #c8a8d8;
+    margin: 4px 0;
+  }
+  #overlay .controls-grid span:nth-child(odd) {
+    color: #ffd6e8;
+    font-weight: 700;
+    text-align: right;
+  }
+  #overlay button {
+    margin-top: 8px;
+    background: #e87cb0;
+    border: none;
+    border-radius: 24px;
+    padding: 12px 36px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+  }
+  #overlay button:hover { background: #d45e9a; transform: scale(1.04); }
+  #overlay.hidden { display: none; }
+  #skillcheck {
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    pointer-events: none;
+  }
+  #skillcheck-label {
+    color: #ffd6e8;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+  #skillcheck-track {
+    width: 200px;
+    height: 22px;
+    background: rgba(40,20,50,0.85);
+    border: 1.5px solid rgba(255,182,193,0.4);
+    border-radius: 11px;
+    position: relative;
+    overflow: hidden;
+  }
+  #skillcheck-zone {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    background: rgba(255,100,160,0.45);
+    border-radius: 4px;
+  }
+  #skillcheck-needle {
+    position: absolute;
+    top: 0;
+    width: 3px;
+    height: 100%;
+    background: #fff;
+    border-radius: 2px;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="ui">
+  <div class="ui-pill" id="machine-count">0 / 5 repaired</div>
+  <div class="ui-pill" id="train-ready">TRAIN READY</div>
+</div>
+
+<div id="skillcheck">
+  <div id="skillcheck-label">PRESS SPACE</div>
+  <div id="skillcheck-track">
+    <div id="skillcheck-zone"></div>
+    <div id="skillcheck-needle"></div>
+  </div>
+</div>
+
+<div id="overlay">
+  <h1>Dolly's Factory</h1>
+  <p>You're a plushie trapped in a corrupted toy factory. Repair all 5 machines, then escape on the train — before the Reject finds you.</p>
+  <div class="controls-grid">
+    <span>WASD / Arrows</span><span>Move</span>
+    <span>Hold E</span><span>Repair machine</span>
+    <span>Space</span><span>Skill check while repairing</span>
+  </div>
+  <button id="start-btn">Start Game</button>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+// ── Sizing ──────────────────────────────────────────────────────────────────
+const TILE = 32;
+const COLS = 30;
+const ROWS = 22;
+const W = COLS * TILE;
+const H = ROWS * TILE;
+
+canvas.width = W;
+canvas.height = H;
+canvas.style.width  = Math.min(W, window.innerWidth * 0.98) + 'px';
+canvas.style.height = Math.min(H, window.innerHeight * 0.82) + 'px';
+
+// Keep square aspect
+const scale = Math.min(window.innerWidth * 0.98 / W, window.innerHeight * 0.82 / H);
+canvas.style.width  = (W * scale) + 'px';
+canvas.style.height = (H * scale) + 'px';
+
+// ── Palette ─────────────────────────────────────────────────────────────────
+const C = {
+  floor:    '#f5e8f0',
+  floorAlt: '#f0dcea',
+  wall:     '#c9a0c0',
+  wallDark: '#a87aa0',
+  machine:  '#f48fb1',
+  machineFixed: '#90e0a0',
+  machineDark: '#d06090',
+  player:   '#ffe0f0',
+  playerAccent: '#f48fb1',
+  reject:   '#5a2060',
+  rejectGlitch: '#e040fb',
+  train:    '#a8d8a0',
+  trainDark:'#60b070',
+  crate:    '#d4b896',
+  crateDark:'#b8967a',
+};
+
+// ── Map ──────────────────────────────────────────────────────────────────────
+// 0=floor, 1=wall, 2=crate/obstacle, 3=machine, 4=train-exit
+const MAP_TEMPLATE = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,3,0,0,0,2,2,0,0,0,0,0,0,1,0,0,0,0,0,0,2,2,0,0,3,0,0,0,1],
+  [1,0,0,0,0,0,2,2,0,0,0,0,0,0,1,0,0,0,0,0,0,2,2,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,1],
+  [1,0,0,2,0,0,0,0,0,3,0,0,0,0,0,0,0,0,3,0,0,0,0,0,2,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,1],
+  [1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1],
+  [1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1],
+  [1,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,2,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,1],
+  [1,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,2,2,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,2,2,0,0,0,0,0,1],
+  [1,0,0,0,2,2,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,2,2,0,0,0,4,0,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+];
+
+let map;
+let machines; // {col, row, fixed, progress}
+let trainOpen = false;
+
+function initMap() {
+  map = MAP_TEMPLATE.map(r => [...r]);
+  machines = [];
+  trainOpen = false;
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (map[r][c] === 3) {
+        machines.push({ col: c, row: r, fixed: false, progress: 0 });
+      }
+    }
+  }
+}
+
+function isSolid(col, row) {
+  if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return true;
+  const t = map[row][col];
+  return t === 1 || t === 2 || (t === 4 && !trainOpen);
+}
+
+// ── Camera / scroll ──────────────────────────────────────────────────────────
+let camX = 0, camY = 0;
+function updateCamera(px, py) {
+  camX = px - W / 2;
+  camY = py - H / 2;
+  camX = Math.max(0, Math.min(camX, 0)); // map fits on screen, no scroll needed
+  camY = Math.max(0, Math.min(camY, 0));
+}
+
+// ── Player ───────────────────────────────────────────────────────────────────
+const PLAYER_R = 10;
+const PLAYER_SPEED = 2.2;
+
+let player;
+function initPlayer() {
+  player = {
+    x: 14 * TILE + TILE / 2,
+    y: 11 * TILE + TILE / 2,
+    vx: 0, vy: 0,
+    facing: 0, // angle
+    repairing: false,
+    repairMachine: null,
+    repairProgress: 0,
+  };
+}
+
+// ── Skill check ──────────────────────────────────────────────────────────────
+let skillCheck = {
+  active: false,
+  needle: 0,        // 0..1
+  dir: 1,
+  speed: 0.012,
+  zoneStart: 0.38,
+  zoneWidth: 0.18,
+  pendingPress: false,
+};
+const scTrack  = document.getElementById('skillcheck-track');
+const scZone   = document.getElementById('skillcheck-zone');
+const scNeedle = document.getElementById('skillcheck-needle');
+const scEl     = document.getElementById('skillcheck');
+
+function showSkillCheck() {
+  skillCheck.active = true;
+  skillCheck.needle = 0;
+  skillCheck.dir = 1;
+  skillCheck.speed = 0.012 + Math.random() * 0.008;
+  skillCheck.zoneStart = 0.25 + Math.random() * 0.35;
+  skillCheck.zoneWidth = 0.15 + Math.random() * 0.1;
+  skillCheck.pendingPress = false;
+  scEl.style.display = 'flex';
+  scZone.style.left  = (skillCheck.zoneStart * 100) + '%';
+  scZone.style.width = (skillCheck.zoneWidth * 100) + '%';
+}
+
+function hideSkillCheck() {
+  skillCheck.active = false;
+  scEl.style.display = 'none';
+}
+
+function tickSkillCheck(dt) {
+  if (!skillCheck.active) return;
+  skillCheck.needle += skillCheck.dir * skillCheck.speed * dt;
+  if (skillCheck.needle >= 1) { skillCheck.needle = 1; skillCheck.dir = -1; }
+  if (skillCheck.needle <= 0) { skillCheck.needle = 0; skillCheck.dir = 1; }
+  scNeedle.style.left = (skillCheck.needle * 97) + '%';
+}
+
+function resolveSkillCheck() {
+  if (!skillCheck.active) return;
+  const n = skillCheck.needle;
+  const hit = n >= skillCheck.zoneStart && n <= skillCheck.zoneStart + skillCheck.zoneWidth;
+  hideSkillCheck();
+  if (!hit) {
+    // Fail: alert reject
+    alertRejectToPosition(player.x, player.y);
+    // Small penalty: knock back repair progress
+    if (player.repairMachine !== null) {
+      machines[player.repairMachine].progress = Math.max(0, machines[player.repairMachine].progress - 0.35);
+      player.repairProgress = machines[player.repairMachine].progress;
+    }
+    showFlash('#f44', 0.4);
+  } else {
+    showFlash('#8f8', 0.3);
+  }
+}
+
+// ── Visual flash feedback ────────────────────────────────────────────────────
+let flash = { color: null, alpha: 0 };
+function showFlash(color, alpha) { flash.color = color; flash.alpha = alpha; }
+
+// ── Reject / enemy ───────────────────────────────────────────────────────────
+const REJECT_R   = 12;
+const REJECT_SPEED_PATROL = 1.1;
+const REJECT_SPEED_CHASE  = 2.0;
+const REJECT_FOV = Math.PI * 0.55; // ~100 degrees
+const REJECT_SIGHT_RANGE = 220;
+const CATCH_DIST = REJECT_R + PLAYER_R + 2;
+
+// Patrol path (world coords)
+const PATROL_WAYPOINTS = [
+  [4*TILE+16,  3*TILE+16],
+  [25*TILE+16, 3*TILE+16],
+  [25*TILE+16, 19*TILE+16],
+  [4*TILE+16,  19*TILE+16],
+];
+
+let reject;
+function initReject() {
+  reject = {
+    x: 4*TILE+16, y: 3*TILE+16,
+    angle: 0,
+    patrolIndex: 1,
+    state: 'patrol',   // patrol | chase | alert
+    alertX: 0, alertY: 0,
+    alertTimer: 0,
+    glitchPhase: 0,
+  };
+}
+
+function alertRejectToPosition(x, y) {
+  reject.state = 'alert';
+  reject.alertX = x;
+  reject.alertY = y;
+  reject.alertTimer = 180;
+}
+
+function hasLineOfSight(ax, ay, bx, by) {
+  const steps = 24;
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    const cx = ax + (bx - ax) * t;
+    const cy = ay + (by - ay) * t;
+    const col = Math.floor(cx / TILE);
+    const row = Math.floor(cy / TILE);
+    if (isSolid(col, row)) return false;
+  }
+  return true;
+}
+
+function canSeePlayer() {
+  const dx = player.x - reject.x;
+  const dy = player.y - reject.y;
+  const dist = Math.sqrt(dx*dx + dy*dy);
+  if (dist > REJECT_SIGHT_RANGE) return false;
+  const angleToPlayer = Math.atan2(dy, dx);
+  let diff = angleToPlayer - reject.angle;
+  while (diff >  Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  if (Math.abs(diff) > REJECT_FOV / 2) return false;
+  return hasLineOfSight(reject.x, reject.y, player.x, player.y);
+}
+
+function moveToward(entity, tx, ty, speed) {
+  const dx = tx - entity.x;
+  const dy = ty - entity.y;
+  const dist = Math.sqrt(dx*dx + dy*dy);
+  if (dist < 2) return true; // reached
+  const nx = dx / dist;
+  const ny = dy / dist;
+  const newX = entity.x + nx * speed;
+  const newY = entity.y + ny * speed;
+  // Wall slide
+  const col = Math.floor(newX / TILE);
+  const row = Math.floor(newY / TILE);
+  const oldCol = Math.floor(entity.x / TILE);
+  const oldRow = Math.floor(entity.y / TILE);
+  if (!isSolid(col, oldRow)) entity.x = newX;
+  if (!isSolid(oldCol, row)) entity.y = newY;
+  entity.angle = Math.atan2(dy, dx);
+  return dist < speed + 1;
+}
+
+function tickReject(dt) {
+  reject.glitchPhase += 0.08 * dt;
+
+  if (canSeePlayer()) {
+    reject.state = 'chase';
+  }
+
+  if (reject.state === 'patrol') {
+    const wp = PATROL_WAYPOINTS[reject.patrolIndex];
+    const reached = moveToward(reject, wp[0], wp[1], REJECT_SPEED_PATROL * (dt / 16));
+    if (reached) {
+      reject.patrolIndex = (reject.patrolIndex + 1) % PATROL_WAYPOINTS.length;
+    }
+  } else if (reject.state === 'chase') {
+    moveToward(reject, player.x, player.y, REJECT_SPEED_CHASE * (dt / 16));
+    if (!canSeePlayer()) {
+      // Lost sight — go to last known position then patrol
+      reject.alertX = player.x;
+      reject.alertY = player.y;
+      reject.state = 'alert';
+      reject.alertTimer = 120;
+    }
+  } else if (reject.state === 'alert') {
+    reject.alertTimer -= dt;
+    const reached = moveToward(reject, reject.alertX, reject.alertY, REJECT_SPEED_CHASE * (dt / 16));
+    if (reached || reject.alertTimer <= 0) {
+      reject.state = 'patrol';
+    }
+  }
+}
+
+// ── Input ────────────────────────────────────────────────────────────────────
+const keys = {};
+document.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.code === 'Space' && skillCheck.active) {
+    e.preventDefault();
+    resolveSkillCheck();
+  }
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
+});
+document.addEventListener('keyup', e => { keys[e.code] = false; });
+
+// ── Game state ───────────────────────────────────────────────────────────────
+let state = 'menu'; // menu | playing | dead | win
+let machinesFixed = 0;
+let deathTimer = 0;
+
+// Skill check trigger timing
+let nextSkillCheckAt = 0.3; // fraction of progress
+
+function startGame() {
+  initMap();
+  initPlayer();
+  initReject();
+  machinesFixed = 0;
+  trainOpen = false;
+  state = 'playing';
+  hideSkillCheck();
+  document.getElementById('overlay').classList.add('hidden');
+  document.getElementById('train-ready').style.display = 'none';
+  updateMachineUI();
+}
+
+function gameOver() {
+  state = 'dead';
+  hideSkillCheck();
+  const ov = document.getElementById('overlay');
+  ov.innerHTML = `
+    <h1 style="color:#f48fb1">Caught!</h1>
+    <p>The Reject found you. You are now a reject too.</p>
+    <button id="start-btn">Try Again</button>
+  `;
+  ov.classList.remove('hidden');
+  document.getElementById('start-btn').addEventListener('click', startGame);
+}
+
+function gameWin() {
+  state = 'win';
+  hideSkillCheck();
+  const ov = document.getElementById('overlay');
+  ov.innerHTML = `
+    <h1 style="color:#b8ffcc">Escaped!</h1>
+    <p>You repaired all the machines and boarded the train. The factory shrinks behind you.</p>
+    <button id="start-btn" style="background:#60b070">Play Again</button>
+  `;
+  ov.classList.remove('hidden');
+  document.getElementById('start-btn').addEventListener('click', startGame);
+}
+
+function updateMachineUI() {
+  document.getElementById('machine-count').textContent = `${machinesFixed} / 5 repaired`;
+}
+
+// ── Player tick ──────────────────────────────────────────────────────────────
+function tickPlayer(dt) {
+  // Movement
+  let dx = 0, dy = 0;
+  if (keys['KeyW'] || keys['ArrowUp'])    dy -= 1;
+  if (keys['KeyS'] || keys['ArrowDown'])  dy += 1;
+  if (keys['KeyA'] || keys['ArrowLeft'])  dx -= 1;
+  if (keys['KeyD'] || keys['ArrowRight']) dx += 1;
+
+  const moving = dx !== 0 || dy !== 0;
+  const isRepairing = player.repairing;
+
+  if (moving && !isRepairing) {
+    const len = Math.sqrt(dx*dx+dy*dy);
+    dx /= len; dy /= len;
+    const speed = PLAYER_SPEED * (dt / 16);
+    const nx = player.x + dx * speed;
+    const ny = player.y + dy * speed;
+    const col = Math.floor(nx / TILE);
+    const row = Math.floor(ny / TILE);
+    const oc  = Math.floor(player.x / TILE);
+    const or_ = Math.floor(player.y / TILE);
+    if (!isSolid(col, or_)) player.x = nx;
+    if (!isSolid(oc,  row)) player.y = ny;
+    player.facing = Math.atan2(dy, dx);
+  }
+
+  // Repair interaction
+  if (keys['KeyE']) {
+    // Find closest machine in range
+    let bestDist = 40, bestIdx = -1;
+    for (let i = 0; i < machines.length; i++) {
+      if (machines[i].fixed) continue;
+      const mx = machines[i].col * TILE + TILE/2;
+      const my = machines[i].row * TILE + TILE/2;
+      const d = Math.hypot(player.x - mx, player.y - my);
+      if (d < bestDist) { bestDist = d; bestIdx = i; }
+    }
+    if (bestIdx >= 0) {
+      player.repairing = true;
+      player.repairMachine = bestIdx;
+      const m = machines[bestIdx];
+      const prevP = m.progress;
+      m.progress += 0.008 * (dt / 16);
+
+      // Trigger skill check periodically
+      if (!skillCheck.active && m.progress > nextSkillCheckAt && prevP <= nextSkillCheckAt) {
+        nextSkillCheckAt = m.progress + 0.25 + Math.random() * 0.15;
+        showSkillCheck();
+      }
+
+      player.repairProgress = m.progress;
+      if (m.progress >= 1) {
+        m.fixed = true;
+        m.progress = 1;
+        player.repairing = false;
+        player.repairMachine = null;
+        machinesFixed++;
+        hideSkillCheck();
+        nextSkillCheckAt = 0.3;
+        updateMachineUI();
+        showFlash('#8f8', 0.5);
+        if (machinesFixed >= 5) {
+          trainOpen = true;
+          document.getElementById('train-ready').style.display = 'block';
+        }
+      }
+    } else {
+      player.repairing = false;
+      player.repairMachine = null;
+    }
+  } else {
+    if (player.repairing) hideSkillCheck();
+    player.repairing = false;
+    player.repairMachine = null;
+  }
+
+  // Check train exit
+  const pcol = Math.floor(player.x / TILE);
+  const prow = Math.floor(player.y / TILE);
+  if (trainOpen && map[prow] && map[prow][pcol] === 4) {
+    gameWin();
+  }
+}
+
+// ── Drawing ──────────────────────────────────────────────────────────────────
+function drawTile(col, row, color, dark, t) {
+  const x = col * TILE;
+  const y = row * TILE;
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y, TILE, TILE);
+  // edge shading
+  ctx.fillStyle = dark;
+  ctx.fillRect(x, y+TILE-3, TILE, 3);
+  ctx.fillRect(x+TILE-3, y, 3, TILE);
+}
+
+function drawMap() {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const t = map[r][c];
+      const x = c * TILE, y = r * TILE;
+
+      if (t === 0) {
+        // Checkerboard floor pattern
+        ctx.fillStyle = (r + c) % 2 === 0 ? C.floor : C.floorAlt;
+        ctx.fillRect(x, y, TILE, TILE);
+      } else if (t === 1) {
+        ctx.fillStyle = C.wall;
+        ctx.fillRect(x, y, TILE, TILE);
+        ctx.fillStyle = C.wallDark;
+        ctx.fillRect(x, y, TILE, 4);
+        ctx.fillRect(x, y, 4, TILE);
+        // brick lines
+        ctx.fillStyle = 'rgba(0,0,0,0.07)';
+        ctx.fillRect(x+2, y+TILE/2, TILE-4, 1);
+        const half = (c % 2 === 0) ? 0 : TILE/2;
+        ctx.fillRect(x+half, y+2, 1, TILE/2-2);
+        ctx.fillRect(x+half, y+TILE/2+2, 1, TILE/2-2);
+      } else if (t === 2) {
+        ctx.fillStyle = C.floor;
+        ctx.fillRect(x, y, TILE, TILE);
+        ctx.fillStyle = C.crate;
+        ctx.fillRect(x+3, y+3, TILE-6, TILE-6);
+        ctx.fillStyle = C.crateDark;
+        ctx.fillRect(x+3, y+3, TILE-6, 4);
+        ctx.fillRect(x+3, y+3, 4, TILE-6);
+        ctx.fillStyle = 'rgba(0,0,0,0.12)';
+        ctx.fillRect(x+TILE/2-1, y+4, 2, TILE-8);
+        ctx.fillRect(x+4, y+TILE/2-1, TILE-8, 2);
+      } else if (t === 3) {
+        // Machine
+        ctx.fillStyle = C.floor;
+        ctx.fillRect(x, y, TILE, TILE);
+        const mi = machines.findIndex(m => m.col === c && m.row === r);
+        const mFixed = mi >= 0 && machines[mi].fixed;
+        const mProg  = mi >= 0 ? machines[mi].progress : 0;
+        const mc = mFixed ? C.machineFixed : C.machine;
+        ctx.fillStyle = mc;
+        ctx.fillRect(x+4, y+4, TILE-8, TILE-8);
+        ctx.fillStyle = mFixed ? '#60b070' : C.machineDark;
+        ctx.fillRect(x+4, y+4, TILE-8, 5);
+        // indicator lights
+        for (let i = 0; i < 3; i++) {
+          ctx.fillStyle = mFixed ? '#b8ffcc' : (mProg > i/3 ? '#ffb0c8' : '#7a4060');
+          ctx.beginPath();
+          ctx.arc(x+10+i*8, y+TILE-9, 3, 0, Math.PI*2);
+          ctx.fill();
+        }
+        // Repair progress bar above machine
+        if (mi >= 0 && !mFixed && mProg > 0) {
+          ctx.fillStyle = 'rgba(0,0,0,0.4)';
+          ctx.fillRect(x+2, y-8, TILE-4, 5);
+          ctx.fillStyle = '#f06090';
+          ctx.fillRect(x+2, y-8, (TILE-4)*mProg, 5);
+        }
+      } else if (t === 4) {
+        // Train exit
+        ctx.fillStyle = '#c8f0c0';
+        ctx.fillRect(x, y, TILE, TILE);
+        if (trainOpen) {
+          ctx.fillStyle = C.train;
+          ctx.fillRect(x+3, y+3, TILE-6, TILE-6);
+          ctx.fillStyle = C.trainDark;
+          ctx.fillRect(x+3, y+3, TILE-6, 4);
+          ctx.fillRect(x+3, y+3, 4, TILE-6);
+          // Arrow
+          ctx.fillStyle = '#fff';
+          ctx.font = '14px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('▲', x+TILE/2, y+TILE/2);
+        } else {
+          ctx.fillStyle = '#708068';
+          ctx.fillRect(x+6, y+6, TILE-12, TILE-12);
+          // Lock icon hint
+          ctx.fillStyle = '#a0b890';
+          ctx.fillRect(x+12, y+14, 8, 8);
+          ctx.strokeStyle = '#a0b890';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(x+16, y+14, 4, Math.PI, 0);
+          ctx.stroke();
+        }
+      }
+    }
+  }
+}
+
+function drawPlayer() {
+  const { x, y, facing } = player;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(facing);
+
+  // Body - rounded plushie shape
+  ctx.fillStyle = C.player;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, PLAYER_R + 2, PLAYER_R, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Stitch line
+  ctx.strokeStyle = 'rgba(200,120,150,0.5)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 2]);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, PLAYER_R - 2, PLAYER_R - 2, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Eyes
+  ctx.fillStyle = '#c05070';
+  ctx.beginPath();
+  ctx.ellipse(4, -3, 2.5, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(4, 3, 2.5, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Eye shine
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(5, -3.5, 1, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(5, 2.5, 1, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Ears
+  ctx.fillStyle = C.playerAccent;
+  ctx.beginPath();
+  ctx.ellipse(-2, -PLAYER_R, 4, 5, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(-2, PLAYER_R, 4, 5, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Repair flash glow
+  if (player.repairing) {
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = '#f48fb1';
+    ctx.strokeStyle = '#f48fb1';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, PLAYER_R + 4, PLAYER_R + 2, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  ctx.restore();
+}
+
+function drawReject() {
+  const { x, y, angle, glitchPhase, state: rstate } = reject;
+  ctx.save();
+  ctx.translate(x, y);
+
+  // Glitch offset
+  const gx = (Math.sin(glitchPhase * 7.3) > 0.7) ? (Math.random() * 6 - 3) : 0;
+  const gy = (Math.sin(glitchPhase * 5.1) > 0.8) ? (Math.random() * 4 - 2) : 0;
+
+  // FOV cone (subtle)
+  if (rstate !== 'patrol') {
+    ctx.save();
+    ctx.rotate(angle);
+    ctx.fillStyle = 'rgba(200,0,255,0.07)';
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, REJECT_SIGHT_RANGE, -REJECT_FOV/2, REJECT_FOV/2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.rotate(angle);
+  ctx.translate(gx, gy);
+
+  // Body - distorted shape
+  ctx.fillStyle = C.reject;
+  ctx.beginPath();
+  // Slightly jagged ellipse
+  const r = REJECT_R;
+  for (let i = 0; i <= 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const jitter = 1 + Math.sin(glitchPhase * 3 + i * 1.7) * 0.15;
+    const px2 = Math.cos(a) * (r + 2) * jitter;
+    const py2 = Math.sin(a) * r * jitter;
+    if (i === 0) ctx.moveTo(px2, py2);
+    else ctx.lineTo(px2, py2);
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  // Glitch highlight
+  ctx.fillStyle = C.rejectGlitch;
+  ctx.globalAlpha = 0.3 + Math.sin(glitchPhase * 4) * 0.2;
+  ctx.beginPath();
+  ctx.ellipse(2, -2, 4, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Eyes - glitchy X shape
+  ctx.strokeStyle = C.rejectGlitch;
+  ctx.lineWidth = 1.5;
+  for (const [ex, ey] of [[4, -3], [4, 3]]) {
+    ctx.beginPath();
+    ctx.moveTo(ex-2, ey-2); ctx.lineTo(ex+2, ey+2);
+    ctx.moveTo(ex+2, ey-2); ctx.lineTo(ex-2, ey+2);
+    ctx.stroke();
+  }
+
+  // State indicator (chase = red halo)
+  if (rstate === 'chase') {
+    ctx.strokeStyle = '#f00';
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.5 + Math.sin(glitchPhase*6)*0.3;
+    ctx.beginPath();
+    ctx.arc(0, 0, REJECT_R+5, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.restore();
+}
+
+function drawFOVCone() {
+  // Draw FOV cone in patrol/alert states too, subtly
+  ctx.save();
+  ctx.translate(reject.x, reject.y);
+  ctx.rotate(reject.angle);
+  const alpha = reject.state === 'chase' ? 0.12 : 0.04;
+  ctx.fillStyle = `rgba(200,0,255,${alpha})`;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.arc(0, 0, REJECT_SIGHT_RANGE, -REJECT_FOV/2, REJECT_FOV/2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+// ── Ambient particles (drifting spores) ──────────────────────────────────────
+const PARTICLES = Array.from({length: 30}, () => ({
+  x: Math.random() * W,
+  y: Math.random() * H,
+  r: 1 + Math.random() * 2,
+  vx: (Math.random() - 0.5) * 0.3,
+  vy: -0.1 - Math.random() * 0.3,
+  alpha: 0.1 + Math.random() * 0.3,
+}));
+
+function tickParticles(dt) {
+  for (const p of PARTICLES) {
+    p.x += p.vx * (dt/16);
+    p.y += p.vy * (dt/16);
+    if (p.y < -5) { p.y = H + 5; p.x = Math.random() * W; }
+    if (p.x < -5) p.x = W + 5;
+    if (p.x > W + 5) p.x = -5;
+  }
+}
+
+function drawParticles() {
+  for (const p of PARTICLES) {
+    ctx.fillStyle = `rgba(255,200,220,${p.alpha})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// ── Main loop ────────────────────────────────────────────────────────────────
+let lastTime = 0;
+
+function loop(ts) {
+  const dt = Math.min(ts - lastTime, 50);
+  lastTime = ts;
+
+  ctx.clearRect(0, 0, W, H);
+
+  if (state === 'playing') {
+    tickPlayer(dt);
+    tickReject(dt);
+    tickSkillCheck(dt);
+    tickParticles(dt);
+
+    // Catch check
+    const dx = player.x - reject.x;
+    const dy = player.y - reject.y;
+    if (Math.sqrt(dx*dx+dy*dy) < CATCH_DIST) {
+      gameOver();
+    }
+  }
+
+  // Draw
+  drawMap();
+  drawParticles();
+  drawFOVCone();
+  drawPlayer();
+  drawReject();
+
+  // Flash overlay
+  if (flash.alpha > 0) {
+    ctx.fillStyle = flash.color;
+    ctx.globalAlpha = flash.alpha;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+    flash.alpha = Math.max(0, flash.alpha - 0.025 * (dt/16));
+  }
+
+  requestAnimationFrame(loop);
+}
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+document.getElementById('start-btn').addEventListener('click', startGame);
+
+// Draw static preview on menu
+initMap();
+initPlayer();
+initReject();
+drawMap();
+drawParticles();
+drawPlayer();
+drawReject();
+
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
